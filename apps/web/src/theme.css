@@ -1,0 +1,75 @@
+/* Motivo: a identidade verde da fundação é adaptada pelos tokens públicos de
+   Brick; um único escopo no documento também alcança os portais.
+   Mudança: docs/mudancas/2026-09-10-01-interface-operacional.md */
+:root {
+  --coletas-primary: #155f49;
+  --coletas-ink: #153731;
+  --coletas-canvas: #f3f6f2;
+  --coletas-surface: #ffffff;
+  --coletas-muted: #52645a;
+  --coletas-border: #d5dfd6;
+  --coletas-primary-hover: #104e3c;
+  --coletas-primary-pressed: #0d4132;
+  --coletas-soft: #e7f0e7;
+  --coletas-soft-hover: #dce9dd;
+  --coletas-soft-pressed: #cfe0d2;
+  --coletas-accent-border: #8cae99;
+  --coletas-map-block: #e9eee5;
+  --coletas-map-water: #d0e1e3;
+  --coletas-map-park: #d1e2cc;
+  --coletas-font: "Manrope Variable", "Segoe UI", sans-serif;
+  --coletas-mono: ui-monospace, Consolas, monospace;
+  --coletas-radius-control: 0.625rem;
+  --coletas-radius-panel: 1rem;
+  --coletas-unit: 0.25rem;
+  --coletas-page-max: 90rem;
+  --scrollbar-thumb: #82988a;
+  --scrollbar-track: var(--coletas-canvas);
+  --scrollbar-hover: var(--coletas-muted);
+  --scrollbar-active: var(--coletas-primary);
+
+  --brick-color-accent-solid: var(--coletas-primary);
+  --brick-color-accent-solid-hover: var(--coletas-primary-hover);
+  --brick-color-accent-solid-pressed: var(--coletas-primary-pressed);
+  --brick-color-accent-on-solid: var(--coletas-surface);
+  --brick-color-accent-soft: var(--coletas-soft);
+  --brick-color-accent-soft-hover: var(--coletas-soft-hover);
+  --brick-color-accent-soft-pressed: var(--coletas-soft-pressed);
+  --brick-color-accent-on-soft: var(--coletas-primary);
+  --brick-color-accent-text: var(--coletas-primary);
+  --brick-color-accent-border: var(--coletas-accent-border);
+  --brick-color-focus-ring: var(--coletas-primary);
+  --brick-color-surface-canvas: var(--coletas-canvas);
+  --brick-color-surface-base: var(--coletas-surface);
+  --brick-color-surface-raised: var(--coletas-surface);
+  --brick-color-surface-subtle: var(--coletas-soft);
+  --brick-color-text-primary: var(--coletas-ink);
+  --brick-color-text-secondary: var(--coletas-muted);
+  --brick-color-border-default: var(--coletas-border);
+  --brick-font-family-body: var(--coletas-font);
+  --brick-font-family-heading: var(--coletas-font);
+  --brick-font-family-mono: var(--coletas-mono);
+  --brick-radius-control: var(--coletas-radius-control);
+  --brick-radius-surface: var(--coletas-radius-panel);
+  --brick-space-1: var(--coletas-unit);
+  --brick-typography-body-md-font-family: var(--coletas-font);
+  --brick-typography-body-sm-font-family: var(--coletas-font);
+  --brick-typography-body-lg-font-family: var(--coletas-font);
+  --brick-typography-title-lg-font-family: var(--coletas-font);
+  --brick-typography-title-md-font-family: var(--coletas-font);
+  --brick-typography-title-sm-font-family: var(--coletas-font);
+  --brick-typography-display-sm-font-family: var(--coletas-font);
+  --brick-typography-control-md-font-family: var(--coletas-font);
+  --brick-typography-control-lg-font-family: var(--coletas-font);
+  --brick-typography-label-md-font-family: var(--coletas-font);
+  --brick-typography-label-strong-font-family: var(--coletas-font);
+  --brick-typography-supporting-sm-font-family: var(--coletas-font);
+  --brick-typography-validation-sm-font-family: var(--coletas-font);
+  --brick-typography-overlay-title-font-family: var(--coletas-font);
+  --brick-typography-compact-title-font-family: var(--coletas-font);
+  --brick-typography-compact-title-lg-font-family: var(--coletas-font);
+  --brick-typography-surface-title-lg-font-family: var(--coletas-font);
+  --brick-typography-surface-title-md-font-family: var(--coletas-font);
+  --brick-typography-field-value-lg-font-family: var(--coletas-font);
+  --brick-typography-field-value-md-font-family: var(--coletas-font);
+}

@@ -1,0 +1,6 @@
+# Motivo: scripts executados no Ubuntu devem manter LF mesmo em checkout Windows.
+# Mudança: docs/mudancas/2026-09-09-03-validacao-integrada.md
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.Dockerfile text eol=lf

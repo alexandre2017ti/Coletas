@@ -1,0 +1,18 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["apps/web/src"],
+  "locale": "pt-BR",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Form", "Scrollbar"],
+  "requiredCommands": ["lint", "build", "e2e"],
+  "commands": {
+    "lint": "npm --prefix apps/web run lint",
+    "build": "npm --prefix apps/web run build",
+    "e2e": "npm --prefix apps/web run test:e2e"
+  },
+  "evidence": {
+    "failurePaths": "apps/web/tests/foundation.spec.ts",
+    "accessibility": "apps/web/tests/design.spec.ts",
+    "localPreviewFlow": "apps/web/tests/interface.spec.ts"
+  }
+}

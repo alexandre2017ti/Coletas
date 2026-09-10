@@ -1,0 +1,76 @@
+name: coletas-dev
+x-api: &api
+  build:
+    context: .
+    dockerfile: infra/api.Dockerfile
+  environment:
+    ASPNETCORE_ENVIRONMENT: Development
+    Infrastructure__Postgres: Host=postgres;Database=coletas;Username=coletas;Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+    Infrastructure__Redis: redis:6379,abortConnect=false
+    Jwt__SigningKey: ${JWT_SIGNING_KEY:?Defina JWT_SIGNING_KEY no .env}
+    Jwt__Issuer: coletas-api
+    Jwt__Audience: coletas-clients
+    Jwt__ExpirationMinutes: 15
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    # Motivo: limitar recursos do ambiente local; registro 2026-09-09-03-validacao-integrada.md.
+    mem_limit: 768m
+    cpus: 1.0
+    environment:
+      POSTGRES_DB: coletas
+      POSTGRES_USER: coletas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coletas -d coletas"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    mem_limit: 256m
+    cpus: 0.5
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *api
+    mem_limit: 512m
+    command: ["--migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    <<: *api
+    mem_limit: 512m
+    cpus: 1.0
+    ports:
+      - "127.0.0.1:5080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  web:
+    mem_limit: 512m
+    cpus: 1.0
+    build:
+      context: .
+      dockerfile: infra/web.Dockerfile
+    environment:
+      API_PROXY_TARGET: http://api:8080
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      api:
+        condition: service_started
+volumes:
+  postgres-data:

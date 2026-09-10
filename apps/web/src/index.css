@@ -1,0 +1,102 @@
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  scrollbar-gutter: stable;
+}
+* {
+  box-sizing: border-box;
+  scrollbar-width: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 3px solid var(--scrollbar-track);
+  border-radius: var(--coletas-radius-control);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+*::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-active);
+}
+button:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+/* Motivo: classes abaixo são arte e metadados da aplicação, sem reimplementar
+   layout, controles ou partes privadas do Brick. Mudança: 2026-09-10-01-interface-operacional.md. */
+.app-container {
+  --brick-container-measure-max: var(--coletas-page-max);
+}
+.brand-mark {
+  color: var(--coletas-primary);
+  flex-shrink: 0;
+}
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+.identifier {
+  font-family: var(--coletas-mono);
+}
+.route-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 620 / 300;
+}
+.route-summary {
+  position: relative;
+}
+.route-summary::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  bottom: 28px;
+  left: 12px;
+  border-left: 1px dashed var(--coletas-accent-border);
+  pointer-events: none;
+}
+.connection-message {
+  min-block-size: 2.75rem;
+}
+:focus-visible {
+  outline: 2px solid var(--brick-color-focus-ring);
+  outline-offset: 4px;
+}
+#page-title:focus {
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --brick-motion-duration-fast: 0s;
+    --brick-motion-duration-moderate: 0s;
+  }
+}
+@media (forced-colors: active) {
+  * {
+    scrollbar-color: auto;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: ButtonText;
+    border-color: Canvas;
+  }
+  *::-webkit-scrollbar-track {
+    background: Canvas;
+  }
+  :focus-visible {
+    outline-color: Highlight;
+  }
+  .route-summary::before {
+    border-color: CanvasText;
+  }
+}

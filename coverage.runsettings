@@ -1,0 +1,16 @@
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[Coletas.*]*</Include>
+          <Exclude>[Coletas.Tests]*</Exclude>
+          <!-- Motivo: migrations e snapshots são gerados; validamos SQL e schema separadamente.
+               Mudança: docs/mudancas/2026-09-09-02-fase-zero.md -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.generated.cs</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

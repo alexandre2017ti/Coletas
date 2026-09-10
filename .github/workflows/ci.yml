@@ -1,0 +1,80 @@
+name: Foundation checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Documentation gate
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            node scripts/check-documentation.mjs "$BASE"
+          else
+            node scripts/check-documentation.mjs "$(git hash-object -t tree /dev/null)"
+          fi
+      - run: dotnet tool restore
+      - run: dotnet restore --locked-mode
+      - run: dotnet build -c Release --no-restore -warnaserror
+      - run: dotnet format --verify-no-changes --no-restore
+      - run: dotnet test -c Release --no-build --settings coverage.runsettings --collect:"XPlat Code Coverage"
+      - shell: pwsh
+        run: ./scripts/check-coverage.ps1
+      - run: dotnet ef migrations has-pending-model-changes --project src/Coletas.Infrastructure --startup-project src/Coletas.Api
+  clients:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [web, mobile]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - if: matrix.app == 'web'
+        run: npm run lint && npm run build
+      - if: matrix.app == 'web'
+        run: npx playwright install --with-deps chromium && npx playwright test
+      - if: matrix.app == 'mobile'
+        run: npx tsc --noEmit && npx expo install --check && npx expo export --platform android --output-dir dist/android && npx expo export --platform ios --output-dir dist/ios
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Motivo: executar exatamente o aceite local, com senha apenas em memória.
+      # Mudança: docs/mudancas/2026-09-09-03-validacao-integrada.md
+      - run: bash scripts/validate-compose.sh
+  image-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f infra/${{ matrix.image }}.Dockerfile -t coletas-${{ matrix.image }}:ci .
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: coletas-${{ matrix.image }}:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
