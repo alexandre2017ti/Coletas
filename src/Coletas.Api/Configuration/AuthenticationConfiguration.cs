@@ -43,6 +43,6 @@ public static class AuthenticationConfiguration
             });
         services.AddAuthorization(options =>
             options.AddPolicy("AdminOnly", policy => policy.RequireRole(nameof(UserRole.Admin))));
-        
+
     }
 }
