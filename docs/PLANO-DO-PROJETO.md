@@ -84,9 +84,9 @@ Aceite integrado: [2026-09-09-03-validacao-integrada.md](mudancas/2026-09-09-03-
 Revalidação em 2026-09-10: [2026-09-10-04-revalidacao-fundacao.md](mudancas/2026-09-10-04-revalidacao-fundacao.md).
 
 - [x] Corrigir e executar aceite Ubuntu/Docker após a Fase 1: JWT efêmero, duas migrations, idempotência, PostGIS, Redis e recuperação da API aprovados.
-- [ ] Recuperar cobertura mínima de 80% após inclusão da Fase 1 — atual: 55,16%, com 15 testes aprovados; CI completo ainda reprovado por cobertura.
+- [x] Recuperar cobertura mínima após inclusão da Fase 1 — validação local em 2026-09-10: 40 testes aprovados, 97,05% de linhas e 88,13% de branches; `scripts/check-coverage.ps1 -Minimum 0.9` aprovado. Registro: [2026-09-10-10-atualizacao-backlog-testes.md](mudancas/2026-09-10-10-atualizacao-backlog-testes.md).
 - [x] Definir e vincular origin a https://github.com/alexandre2017ti/Coletas — registro [2026-09-10-05-repositorio-remoto.md](mudancas/2026-09-10-05-repositorio-remoto.md).
-- [ ] Executar workflow no GitHub — pendentes primeiro commit e envio do código.
+- [ ] Executar workflow no GitHub — alterações atuais ainda não foram enviadas após a reorganização da API e ampliação dos testes.
 - [ ] Configurar checks obrigatórios na proteção da branch — pendentes branch remota e acesso administrativo.
 
 Fase 0 teve aceite local em 2026-09-09; a revalidação acima informa o estado atual. Consulte [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md). O remoto foi definido em 2026-09-10; execução do workflow e proteção de branch ainda estão pendentes. Publicação em servidor e lojas continua fora do aceite local.
