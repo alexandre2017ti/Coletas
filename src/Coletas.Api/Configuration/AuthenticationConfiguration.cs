@@ -40,9 +40,36 @@ public static class AuthenticationConfiguration
                     NameClaimType = ClaimTypes.NameIdentifier,
                     RoleClaimType = ClaimTypes.Role
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        // Bloqueio e revogação precisam valer também para JWT já emitido.
+                        // Mudança: docs/mudancas/2026-09-15-01-analise-administrativa.md
+                        var db = context.HttpContext.RequestServices.GetRequiredService<ColetasDbContext>();
+                        if (!Guid.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+                            || !Guid.TryParse(context.Principal?.FindFirstValue("sid"), out var sid))
+                        { context.Fail("Sessão inválida."); return; }
+                        var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, context.HttpContext.RequestAborted);
+                        var scope = context.Principal?.FindFirstValue("scope");
+                        var purpose = scope == "onboarding" ? "onboarding" : "refresh";
+                        if (user is null || user.Status == UserStatus.Blocked
+                            || user.Role.ToString() != context.Principal?.FindFirstValue(ClaimTypes.Role)
+                            || scope is not ("access" or "onboarding")
+                            || scope == "access" && user.Status != UserStatus.Active
+                            || !await db.SecurityTokens.AnyAsync(x => x.Id == sid && x.UserId == id && !x.Used
+                                && x.Purpose == purpose && x.ExpiresAt > DateTimeOffset.UtcNow, context.HttpContext.RequestAborted))
+                            context.Fail("Sessão inválida.");
+                    }
+                };
             });
         services.AddAuthorization(options =>
-            options.AddPolicy("AdminOnly", policy => policy.RequireRole(nameof(UserRole.Admin))));
+        {
+            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser().RequireClaim("scope", "access").Build();
+            options.AddPolicy("AccountAccess", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "access", "onboarding"));
+            options.AddPolicy("AdminOnly", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "access").RequireRole(nameof(UserRole.Admin)));
+        });
 
     }
 }

@@ -19,7 +19,8 @@ public sealed record CourierRegistrationRequest(
     string FullName,
     string PhoneWhatsApp,
     VehicleType VehicleType,
-    string Plate);
+    string Plate,
+    string? Cpf = null);
 
 /// <summary>Dados mínimos para registrar um documento privado.</summary>
 public sealed record CourierDocumentRequest(CourierDocumentType Type, DateTimeOffset? ExpiresAt);
@@ -31,7 +32,8 @@ public sealed record LoginRequest(string Email, string Password);
 public sealed record RegistrationResponse(Guid UserId, UserRole Role, UserStatus Status);
 
 /// <summary>Token de acesso de curta duração.</summary>
-public sealed record AuthResponse(string AccessToken, DateTimeOffset ExpiresAt, UserRole Role);
+public sealed record AuthResponse(string AccessToken, DateTimeOffset ExpiresAt, UserRole Role,
+    string? RefreshToken = null, DateTimeOffset? RefreshExpiresAt = null);
 
 /// <summary>Documento sem conteúdo privado.</summary>
 public sealed record CourierDocumentResponse(Guid Id, CourierDocumentType Type, CourierDocumentStatus Status, DateTimeOffset? ExpiresAt);
@@ -73,6 +75,4 @@ public interface IIdentityService
     /// <summary>Registra metadados de documento do entregador autorizado.</summary>
     Task<IdentityResult<CourierDocumentResponse>> AddCourierDocumentAsync(Guid actorId, UserRole actorRole, Guid courierId, CourierDocumentRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Altera o estado de uma conta por ação administrativa.</summary>
-    Task<IdentityResult<RegistrationResponse>> SetUserStatusAsync(UserRole actorRole, Guid userId, UserStatus status, CancellationToken cancellationToken);
 }

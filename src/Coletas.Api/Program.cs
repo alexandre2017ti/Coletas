@@ -22,6 +22,7 @@ builder.Services.AddApiRateLimiting();
 
 var app = builder.Build();
 if (await DatabaseMigrationRunner.RunIfRequestedAsync(app, args)) return;
+if (await AdminBootstrapRunner.RunIfRequestedAsync(app, args)) return;
 
 app.UseExceptionHandler();
 app.UseRouting();

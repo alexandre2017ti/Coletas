@@ -47,6 +47,18 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<ITariffQuoteService, TariffQuoteService>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddOptions<SessionOptions>().BindConfiguration("Session")
+            .Validate(x => x.RefreshDays is >= 1 and <= 30 && x.RecoveryMinutes is >= 5 and <= 60 && x.OnboardingMinutes is >= 5 and <= 60, "Configure prazos de sessão válidos.").ValidateOnStart();
+        services.AddOptions<RecoveryMailOptions>().BindConfiguration("RecoveryMail");
+        services.AddOptions<PrivateDocumentOptions>().BindConfiguration("PrivateDocuments")
+            .Validate(x => x.MaxBytes is > 0 and <= 52428800, "PrivateDocuments:MaxBytes inválido.").ValidateOnStart();
+        services.AddScoped<SessionService>();
+        services.AddScoped<ProfileService>();
+        services.AddScoped<CourierDocumentService>();
+        services.AddScoped<AdminBootstrapService>();
+        services.AddScoped<RegistrationReviewService>();
+        services.AddScoped<IRecoveryMailer, RecoveryMailer>();
+        services.AddSingleton<PrivateDocumentStore>();
         return services;
     }
 }

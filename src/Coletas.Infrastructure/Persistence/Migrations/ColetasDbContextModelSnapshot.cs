@@ -8,7 +8,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Coletas.Infrastructure.Persistence.Migrations;
+namespace Coletas.Infrastructure.Persistence.Migrations
+{
     [DbContext(typeof(ColetasDbContext))]
     partial class ColetasDbContextModelSnapshot : ModelSnapshot
     {
@@ -28,6 +29,10 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -43,6 +48,12 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cpf")
+                        .IsUnique();
+
+                    b.HasIndex("PhoneWhatsApp")
+                        .IsUnique();
+
                     b.HasIndex("UserId")
                         .IsUnique();
 
@@ -55,6 +66,13 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<long>("ContentLength")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid>("CourierId")
                         .HasColumnType("uuid");
 
@@ -64,10 +82,17 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ReviewReason")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -141,6 +166,9 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PhoneWhatsApp")
+                        .IsUnique();
+
                     b.HasIndex("TaxId")
                         .IsUnique();
 
@@ -148,6 +176,111 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                         .IsUnique();
 
                     b.ToTable("Establishments", "establishments");
+                });
+
+            modelBuilder.Entity("Coletas.Domain.Identity.IdentityAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IdentityAudits", "identity");
+                });
+
+            modelBuilder.Entity("Coletas.Domain.Identity.ReviewEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InternalNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PublicReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("ReviewEvents", "identity");
+                });
+
+            modelBuilder.Entity("Coletas.Domain.Identity.SecurityToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SecurityTokens", "identity");
                 });
 
             modelBuilder.Entity("Coletas.Domain.Identity.User", b =>
@@ -169,15 +302,31 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ReviewStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<long>("ReviewVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<long>("SecurityVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<string>("StatusReason")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -246,6 +395,24 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Coletas.Domain.Identity.ReviewEvent", b =>
+                {
+                    b.HasOne("Coletas.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Coletas.Domain.Identity.SecurityToken", b =>
+                {
+                    b.HasOne("Coletas.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Coletas.Domain.Couriers.Courier", b =>
                 {
                     b.Navigation("Documents");
@@ -255,3 +422,4 @@ namespace Coletas.Infrastructure.Persistence.Migrations;
 #pragma warning restore 612, 618
         }
     }
+}

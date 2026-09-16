@@ -10,13 +10,23 @@ Idioma pt-BR; moeda BRL apenas para exemplos. Não há datas operacionais nesta 
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 |---|---|---|---|---|
-| Form | PreviewRequest + Field/Input Brick | Este contrato | prévia sem envio | tests/interface.spec.ts |
+| Form | PreviewRequest + Field/Input Brick; Registration compartilhado nos cadastros | Este contrato e IdentityContracts | prévia; empresa; entregador | tests/interface.spec.ts; tests/registration.spec.ts |
+| Select/Listbox | Registration select nativo existente | VehicleType; registro 2026-09-16-02 | tipo de veículo; popup do sistema aceito | tests/registration.spec.ts |
+| HTTP de cadastro/sessão | apps/web/src/api/client.ts | AuthController; SessionsController | público sem Bearer; conta autenticada | tests/client.spec.ts; IdentityFlowTests |
 | Scrollbar | apps/web/src/index.css | DESIGN.md | sem opt-in | tests/design.spec.ts |
 | Dialog | FLOWSTACK Brick Dialog | guia 0.2.2 e este contrato | detalhes/prévia | tests/interface.spec.ts |
 | Search | DeliveryList + Field/Input Brick | Este contrato | local sintética | tests/interface.spec.ts |
 | Status | ConnectionStatus | prontidão existente | idle/busy/success/error | tests/foundation.spec.ts |
 
-Sem seleção de tabela, calendário, select/listbox, toast, CRUD remoto ou permissões nesta mudança. Não criar donos fictícios para capacidades não implementadas.
+Sem seleção de tabela, calendário ou toast nesta mudança. A prévia continua local; os cadastros públicos enviam à API. O cliente de sessão não representa uma tela de login implementada.
+
+### Refatoração de cadastro/sessão — 2026-09-16
+
+Registro: docs/mudancas/2026-09-16-02-servicos-e-cliente-http.md. A API já possui identidade e autorização; a descrição inicial acima representa a fundação de 10/09, não o backend atual. Registration é o único formulário de empresa/entregador; retirar o scaffold AccountForms sem consumidores preserva as máscaras e layout existentes. Não ampliar esta refatoração de transporte para uma migração visual. A prévia mantém Field/Input Brick e não muda de dono.
+
+Cadastro espera confirmação do servidor, limpa campos somente em sucesso e permanece na tela aguardando análise. Erros mantêm os dados apenas em memória; timeout de 30 segundos informa resultado incerto e não repete a gravação. Desmontagem cancela a espera local, sem prometer cancelamento no servidor. Consulta BrasilAPI separada envia apenas CNPJ e nunca credenciais.
+
+Login/refresh usam JSON e tokens somente em memória, conforme SessionService; não há cookie de renovação nem restauração após recarregar. Logout usa Bearer e revoga as sessões do titular, inclusive onboarding. Falha de logout limpa memória local e informa revogação remota não confirmada. Respostas de sessão antiga não podem autenticar outra conta. Ainda não há interface de login integrada nesta entrega.
 
 ## Navegação e listas
 

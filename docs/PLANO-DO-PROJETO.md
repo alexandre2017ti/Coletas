@@ -103,6 +103,23 @@ Esta preparação visual não conclui funcionalidades de negócio das fases segu
 
 ### Fase 1 — Acesso e cadastros
 
+- [x] Itens 4 e 5: separar responsabilidades de perfil/documentos/bootstrap e unificar formulário/cliente HTTP — 145 testes .NET, cobertura de linhas 84,03%, 66 testes web desktop/mobile, build/lint e formatação aprovados. Validação local com EF InMemory e API simulada no navegador; não inclui publicação/homologação PostgreSQL. [Registro e limites da auditoria](mudancas/2026-09-16-02-servicos-e-cliente-http.md).
+
+- [x] Corrigir itens 1, 2 e 3 da revisão: invalidação cadastral, remoção das decisões duplicadas e emissão única de JWT — 140 testes aprovados, cobertura de linhas 80,60% e formatação conferida. Validação EF InMemory/HTTP local; homologação PostgreSQL e atualização da demonstração continuam pendentes. [Registro](mudancas/2026-09-16-01-refatoracao-identidade.md).
+
+- [~] Análise administrativa versionada, fila, motivos públicos/internos e proteção contra decisão desatualizada — [registro](mudancas/2026-09-15-01-analise-administrativa.md). Interface e homologação permanecem pendentes até validação.
+
+- [x] Implementar e testar exclusividade de CNPJ/e-mail/telefone de empresas e CPF/e-mail/telefone/placa de entregadores — 100 testes .NET, 18 testes web e sete cenários concorrentes em PostgreSQL isolado aprovados. Registros: [empresa](mudancas/2026-09-14-03-identificadores-exclusivos-empresa.md) e [entregador](mudancas/2026-09-14-04-identificadores-exclusivos-entregador.md).
+- [x] Ativar exclusividade na demonstração — cadastros antigos removidos com autorização, migration e índices conferidos, API 5080 atualizada e validação de CPF via proxy confirmada. [Limpeza autorizada](mudancas/2026-09-14-05-limpeza-cadastros-demo.md).
+- [ ] Adaptar cliente mobile ao CPF obrigatório nos novos cadastros — nenhum entregador legado restante na demonstração após limpeza autorizada.
+
+- [x] Validar cadastros pela API real com PostgreSQL — migration aditiva aplicada e reexecutada, 9 respostas HTTP esperadas e consultas SQL aprovadas em 2026-09-14. [Registro](mudancas/2026-09-14-02-cadastro-postgres-real.md).
+- [ ] Homologar envio pelo navegador até o PostgreSQL com a API atualizada na demonstração — API 5080 atualizada; validação de CPF e prontidão pelo proxy aprovadas. Fluxo completo do formulário com a versão atual ainda pendente.
+
+- [x] Validar alinhamento, máscaras e edição da placa nos cadastros web — 18 testes desktop/mobile aprovados, build web aprovado; consulta CNPJ e envio exercitados com respostas simuladas. [Aceite dos formulários](mudancas/2026-09-14-01-aceite-formularios.md). Integração com API real permanece pendente.
+
+Rodada em execução: [integração e aceite local](mudancas/2026-09-10-16-integracao-fase-1.md). Inclui bordas/foco/placeholders, envio real dos cadastros, sessão, recuperação de senha, documentos privados, veículo e administração. Nenhuma pendência abaixo será encerrada apenas por existir uma tela ou um teste simulado.
+
 - [~] Login, recuperação e renovação segura de sessão — login JWT curto implementado; recuperação e renovação pendentes. Registro: [2026-09-10-03-fase-1-acesso-cadastros.md](mudancas/2026-09-10-03-fase-1-acesso-cadastros.md).
 - [~] Perfis e autorização por função — perfis e política administrativa implementados; cobertura completa de autorização pendente.
 - [~] Cadastro de estabelecimentos — endpoint e persistência implementados; interface e fluxo real pendentes.
@@ -167,6 +184,8 @@ Esta preparação visual não conclui funcionalidades de negócio das fases segu
 Para o primeiro ambiente de produção: um servidor de aplicação com 4 vCPU, 8 GB RAM e SSD; banco PostgreSQL com backup externo obrigatório. Quando a carga justificar, separar aplicação, banco e Redis. Não adotar microsserviços ou Kubernetes antes de existir necessidade comprovada.
 
 ## Critérios gerais de aceite
+
+- Aplicar a [diretriz Ponytail](DIRETRIZ-PONYTAIL.md) antes de escrever código, preservando legibilidade, segurança, testes e os padrões do projeto. [Registro da adoção](mudancas/2026-09-15-02-diretriz-ponytail.md).
 
 - Toda regra configurável funciona sem alteração de código.
 - A tarifa deve separar taxa mínima, adicional por quilômetro excedente e adicional de volta operacional; o adicional de volta é R$ 1,50 por solicitação quando aplicável.

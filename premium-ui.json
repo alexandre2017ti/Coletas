@@ -4,6 +4,7 @@
   "locale": "pt-BR",
   "canonicalMap": "UX-CONTRACT.md",
   "requiredCapabilities": ["Form", "Scrollbar"],
+  "ownership": { "Select/Listbox": "native" },
   "requiredCommands": ["lint", "build", "e2e"],
   "commands": {
     "lint": "npm --prefix apps/web run lint",

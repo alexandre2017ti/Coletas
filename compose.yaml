@@ -11,6 +11,13 @@ x-api: &api
     Jwt__Issuer: coletas-api
     Jwt__Audience: coletas-clients
     Jwt__ExpirationMinutes: 15
+    RecoveryMail__PickupDirectory: /app/private/mail
+    RecoveryMail__ResetUrl: http://127.0.0.1:5173/?view=reset-password
+    RecoveryMail__From: no-reply@coletas.local
+  # Motivo: arquivos privados sobrevivem à recriação da API sem exposição HTTP pública.
+  # Mudança: docs/mudancas/2026-09-10-16-integracao-fase-1.md
+  volumes:
+    - private-data:/app/private
 services:
   postgres:
     image: postgis/postgis:17-3.5
@@ -74,3 +81,4 @@ services:
         condition: service_started
 volumes:
   postgres-data:
+  private-data:

@@ -13,6 +13,7 @@ import { ConnectionStatus, Glyph, Logo } from "./components/ui";
 import { DeliveryDetails, DeliveryList } from "./components/DeliveryList";
 import { PreviewRequest } from "./components/PreviewRequest";
 import { Overview, CourierPreview } from "./components/Screens";
+import { Registration } from "./components/Registration";
 import { navigate, snapshot, subscribe } from "./navigation";
 import type { DeliveryExample } from "./data/demo";
 
@@ -20,6 +21,8 @@ const destinations = [
   { view: "overview", label: "Visão geral", icon: "dashboard" },
   { view: "deliveries", label: "Entregas", icon: "box" },
   { view: "courier", label: "Visão do entregador", icon: "bike" },
+  { view: "register-establishment", label: "Cadastrar estabelecimento", icon: "store" },
+  { view: "register-courier", label: "Cadastrar entregador", icon: "bike" },
 ] as const;
 
 export default function App() {
@@ -170,10 +173,12 @@ export default function App() {
                             ? "Cada entrega, com o próximo passo bem claro."
                             : view === "courier"
                               ? "As informações que importam antes de sair."
-                              : "Este endereço não corresponde a uma tela da prévia."}
+                              : view === "register-courier" || view === "register-establishment"
+                                ? "Preencha os dados abaixo para enviar seu cadastro para análise."
+                                : "Este endereço não corresponde a uma tela da prévia."}
                       </Paragraph>
                     </VStack>
-                    {current && view !== "courier" && (
+                    {current && !view.startsWith("register-") && view !== "courier" && (
                       <PreviewRequest draft={draft} onDraftChange={setDraft} />
                     )}
                   </Stack>
@@ -185,6 +190,8 @@ export default function App() {
                     />
                   )}
                   {view === "courier" && <CourierPreview />}
+                  {view === "register-establishment" && <Registration key="establishment" kind="establishment" />}
+                  {view === "register-courier" && <Registration key="courier" kind="courier" />}
                   {!current && (
                     <Button href="?view=overview" onClick={navigate}>
                       Voltar à visão geral

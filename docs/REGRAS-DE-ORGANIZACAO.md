@@ -71,3 +71,9 @@ Antes de considerar uma mudança concluída, verificar:
 O script scripts/check-documentation.mjs exige um novo registro em docs/mudancas/ para alterações e confere as seções principais. O workflow .github/workflows/ci.yml executa essa verificação, compilação, testes, análise e cobertura mínima de 80% do código próprio. A revisão humana deve confirmar motivo, impacto, comentários e atualização do backlog; a automação não avalia a justificativa semântica.
 
 Para restringir merges no servidor Git, os checks devem ser obrigatórios na proteção da branch. Essa configuração remota permanece pendente até existir repositório remoto definido. Registro desta implementação: docs/mudancas/2026-09-09-02-fase-zero.md.
+
+## 9. Revisão de simplicidade antes de codificar
+
+A [diretriz Ponytail](DIRETRIZ-PONYTAIL.md) é obrigatória antes de escrever ou alterar código. Registrar brevemente no arquivo da mudança o fluxo inspecionado, o reaproveitamento escolhido e a necessidade de novas dependências ou abstrações, quando houver. Não criar arquitetura especulativa nem comprimir código em prejuízo da legibilidade.
+
+Esta verificação é de processo e revisão humana: o CI atual não consegue comprovar que o fluxo foi lido ou que a solução é a mais simples. Ponytail não permite dispensar testes, documentação, validação, segurança ou requisitos explícitos. Registro: [adoção](mudancas/2026-09-15-02-diretriz-ponytail.md).

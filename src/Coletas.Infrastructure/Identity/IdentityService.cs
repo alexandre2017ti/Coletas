@@ -1,6 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using BCryptApi = BCrypt.Net.BCrypt;
 using Coletas.Application.Identity;
 using Coletas.Domain.Couriers;
@@ -8,13 +5,11 @@ using Coletas.Domain.Establishments;
 using Coletas.Domain.Identity;
 using Coletas.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Coletas.Infrastructure.Identity;
 
 /// <summary>Implementa identidade e cadastros sobre o PostgreSQL.</summary>
-public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptions> jwtOptions) : IIdentityService
+public sealed class IdentityService(ColetasDbContext database, SessionService sessions, RegistrationReviewService reviews) : IIdentityService
 {
     /// <inheritdoc />
     public async Task<IdentityResult<RegistrationResponse>> RegisterEstablishmentAsync(
@@ -33,11 +28,14 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
         }
 
         var email = Normalize(request.Email);
-        var taxId = NormalizeDocument(request.TaxId);
+        if (!RegistrationValidation.IsCnpj(request.TaxId))
+            return IdentityResult<RegistrationResponse>.Invalid("Informe um CNPJ válido, incluindo os dígitos verificadores.");
+        var taxId = RegistrationValidation.NormalizeCnpj(request.TaxId);
+        var phone = RegistrationValidation.NormalizePhone(request.PhoneWhatsApp);
         if (await database.Users.AnyAsync(x => x.Email == email, cancellationToken)
-            || await database.Establishments.AnyAsync(x => x.TaxId == taxId, cancellationToken))
+            || await database.Establishments.AnyAsync(x => x.TaxId == taxId || x.PhoneWhatsApp == phone, cancellationToken))
         {
-            return IdentityResult<RegistrationResponse>.Conflict("Não foi possível concluir o cadastro com os dados informados.");
+            return EstablishmentConflict();
         }
 
         var user = new User
@@ -54,11 +52,24 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
             LegalName = request.LegalName.Trim(),
             TradeName = request.TradeName.Trim(),
             TaxId = taxId,
-            PhoneWhatsApp = request.PhoneWhatsApp.Trim()
+            PhoneWhatsApp = phone
         });
-        await database.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException error) when (error.InnerException is Npgsql.PostgresException
+        { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Users_Email" or "IX_Establishments_TaxId" or "IX_Establishments_PhoneWhatsApp" })
+        {
+            // A consulta prévia não elimina a corrida: o índice decide e a transação evita usuário órfão.
+            // Mudança: docs/mudancas/2026-09-14-03-identificadores-exclusivos-empresa.md
+            return EstablishmentConflict();
+        }
         return IdentityResult<RegistrationResponse>.Ok(new(user.Id, user.Role, user.Status));
     }
+
+    private static IdentityResult<RegistrationResponse> EstablishmentConflict() =>
+        IdentityResult<RegistrationResponse>.Conflict("Cadastro não concluído: CNPJ, e-mail ou telefone já utilizado. Confira seus dados ou procure o suporte.");
 
     /// <inheritdoc />
     public async Task<IdentityResult<RegistrationResponse>> RegisterCourierAsync(
@@ -82,11 +93,18 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
         }
 
         var email = Normalize(request.Email);
-        var plate = NormalizePlate(request.Plate);
+        if (!RegistrationValidation.IsPlate(request.Plate))
+            return IdentityResult<RegistrationResponse>.Invalid("Informe uma placa como ABC-1234 ou ABC1D23.");
+        var plate = RegistrationValidation.NormalizePlate(request.Plate);
+        if (!RegistrationValidation.IsCpf(request.Cpf))
+            return IdentityResult<RegistrationResponse>.Invalid("Informe um CPF válido, incluindo os dígitos verificadores.");
+        var cpf = RegistrationValidation.NormalizeCpf(request.Cpf);
+        var phone = RegistrationValidation.NormalizePhone(request.PhoneWhatsApp);
         if (await database.Users.AnyAsync(x => x.Email == email, cancellationToken)
-            || await database.Vehicles.AnyAsync(x => x.Plate == plate, cancellationToken))
+            || await database.Vehicles.AnyAsync(x => x.Plate == plate, cancellationToken)
+            || await database.Couriers.AnyAsync(x => x.Cpf == cpf || x.PhoneWhatsApp == phone, cancellationToken))
         {
-            return IdentityResult<RegistrationResponse>.Conflict("Não foi possível concluir o cadastro com os dados informados.");
+            return CourierConflict();
         }
 
         var user = new User
@@ -100,14 +118,28 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
         {
             UserId = user.Id,
             FullName = request.FullName.Trim(),
-            PhoneWhatsApp = request.PhoneWhatsApp.Trim()
+            PhoneWhatsApp = phone,
+            Cpf = cpf
         };
         database.Users.Add(user);
         database.Couriers.Add(courier);
         database.Vehicles.Add(new Vehicle { CourierId = courier.Id, Type = request.VehicleType, Plate = plate });
-        await database.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException error) when (error.InnerException is Npgsql.PostgresException
+        { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Users_Email" or "IX_Vehicles_Plate" or "IX_Couriers_Cpf" or "IX_Couriers_PhoneWhatsApp" })
+        {
+            // Índices garantem exclusividade mesmo após consultas prévias concorrentes.
+            // Mudança: docs/mudancas/2026-09-14-04-identificadores-exclusivos-entregador.md
+            return CourierConflict();
+        }
         return IdentityResult<RegistrationResponse>.Ok(new(user.Id, user.Role, user.Status));
     }
+
+    private static IdentityResult<RegistrationResponse> CourierConflict() =>
+        IdentityResult<RegistrationResponse>.Conflict("Cadastro não concluído: CPF, telefone, e-mail ou placa já utilizado. Confira seus dados ou procure o suporte.");
 
     /// <inheritdoc />
     public async Task<IdentityResult<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
@@ -128,26 +160,9 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
             return IdentityResult<AuthResponse>.Unauthorized("Credenciais inválidas.");
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var expiresAt = now.AddMinutes(jwtOptions.Value.ExpirationMinutes);
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-        var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Value.SigningKey)),
-            SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            jwtOptions.Value.Issuer,
-            jwtOptions.Value.Audience,
-            claims,
-            now.UtcDateTime,
-            expiresAt.UtcDateTime,
-            credentials);
-        return IdentityResult<AuthResponse>.Ok(new(new JwtSecurityTokenHandler().WriteToken(token), expiresAt, user.Role));
+        // Toda emissão precisa da sessão persistida (sid/scope) exigida pela autenticação.
+        // Mudança: docs/mudancas/2026-09-16-01-refatoracao-identidade.md
+        return IdentityResult<AuthResponse>.Ok(await sessions.CreateAsync(user, false, cancellationToken));
     }
 
     /// <inheritdoc />
@@ -186,37 +201,21 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
             ExpiresAt = request.ExpiresAt,
             Status = CourierDocumentStatus.Pending
         };
+        var owner = await database.Users.SingleAsync(x => x.Id == courier.UserId, cancellationToken);
         database.CourierDocuments.Add(document);
-        await database.SaveChangesAsync(cancellationToken);
+        await reviews.InvalidateAsync(owner, actorId, "Documento cadastrado; análise precisa ser refeita.", cancellationToken);
+        try { await database.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateConcurrencyException)
+        {
+            database.ChangeTracker.Clear();
+            return IdentityResult<CourierDocumentResponse>.Conflict("Cadastro alterado; recarregue antes de reenviar.");
+        }
         return IdentityResult<CourierDocumentResponse>.Ok(new(document.Id, document.Type, document.Status, document.ExpiresAt));
-    }
-
-    /// <inheritdoc />
-    public async Task<IdentityResult<RegistrationResponse>> SetUserStatusAsync(
-        UserRole actorRole,
-        Guid userId,
-        UserStatus status,
-        CancellationToken cancellationToken)
-    {
-        if (actorRole != UserRole.Admin)
-        {
-            return IdentityResult<RegistrationResponse>.Forbidden("Apenas administradores podem alterar a aprovação.");
-        }
-
-        var user = await database.Users.SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
-        if (user is null)
-        {
-            return IdentityResult<RegistrationResponse>.NotFound("Usuário não encontrado.");
-        }
-
-        user.Status = status;
-        await database.SaveChangesAsync(cancellationToken);
-        return IdentityResult<RegistrationResponse>.Ok(new(user.Id, user.Role, user.Status));
     }
 
     private static string? ValidateCommonRegistration(string email, string password, string phoneWhatsApp)
     {
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@', StringComparison.Ordinal) || email.Length > 254)
+        if (!RegistrationValidation.IsEmail(email))
         {
             return "Informe um e-mail válido.";
         }
@@ -226,8 +225,8 @@ public sealed class IdentityService(ColetasDbContext database, IOptions<JwtOptio
             return "A senha deve ter entre 12 e 128 caracteres.";
         }
 
-        return string.IsNullOrWhiteSpace(phoneWhatsApp) || phoneWhatsApp.Length > 30
-            ? "Informe um telefone WhatsApp válido."
+        return phoneWhatsApp is null || phoneWhatsApp.Length > 30 || !RegistrationValidation.IsPhone(phoneWhatsApp)
+            ? "Informe um WhatsApp com DDD e 10 ou 11 dígitos."
             : null;
     }
 

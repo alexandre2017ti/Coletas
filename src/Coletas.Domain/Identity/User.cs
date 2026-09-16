@@ -34,7 +34,15 @@ public sealed class User
     public required string Email { get; init; }
 
     /// <summary>Hash BCrypt da senha.</summary>
-    public required string PasswordHash { get; init; }
+    public required string PasswordHash { get; set; }
+
+    /// <summary>Versão concorrente para serializar sessões e mudanças de segurança.</summary>
+    public long SecurityVersion { get; set; }
+    public string? StatusReason { get; set; }
+    // Regra: autenticar não altera a versão dos dados examinados pelo administrador.
+    // Mudança: docs/mudancas/2026-09-15-01-analise-administrativa.md
+    public long ReviewVersion { get; set; }
+    public ReviewStatus ReviewStatus { get; set; } = ReviewStatus.Pending;
 
     /// <summary>Perfil de autorização.</summary>
     public UserRole Role { get; init; }

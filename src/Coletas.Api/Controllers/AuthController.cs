@@ -14,6 +14,7 @@ namespace Coletas.Api.Controllers;
 /// <summary>Operações HTTP de Auth.</summary>
 [ApiController]
 [Tags("Identity")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuthController : ControllerBase
 {
     /// <summary>RegisterEstablishment: entrada HTTP delegada ao serviço responsável.</summary>

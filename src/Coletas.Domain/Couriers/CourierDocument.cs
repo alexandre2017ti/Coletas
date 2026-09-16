@@ -21,12 +21,19 @@ public enum CourierDocumentStatus
     /// <summary>Vencido.</summary>
     Expired,
     /// <summary>Bloqueado.</summary>
-    Blocked
+    Blocked,
+    /// <summary>Conteúdo recebido para análise.</summary>
+    UnderReview
 }
 
 /// <summary>Metadados privados de um documento do entregador.</summary>
 public sealed class CourierDocument
 {
+    /// <summary>Chave interna nunca retornada pela API.</summary>
+    public string? StorageKey { get; set; }
+    public string? ContentType { get; set; }
+    public long ContentLength { get; set; }
+    public string? ReviewReason { get; set; }
     /// <summary>Identificador do documento.</summary>
     public Guid Id { get; init; } = Guid.NewGuid();
 

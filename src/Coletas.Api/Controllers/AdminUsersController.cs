@@ -5,6 +5,7 @@ using Coletas.Application.Identity;
 using Coletas.Application.Foundation;
 using Coletas.Application.Pricing;
 using Coletas.Domain.Identity;
+using Coletas.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -23,10 +24,14 @@ public sealed class AdminUsersController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
     public async Task<IResult> ApproveUser(
         Guid userId,
-        [FromServices] IIdentityService service,
+        [FromBody] ReviewDecision request,
+        [FromServices] RegistrationReviewService service,
         CancellationToken cancellationToken)
     {
-        var result = await service.SetUserStatusAsync(UserRole.Admin, userId, UserStatus.Active, cancellationToken);
+        // Compatibilidade de rota, não de bypass: a versão e o motivo passam a ser obrigatórios.
+        // Mudança: docs/mudancas/2026-09-15-01-analise-administrativa.md
+        var result = await service.DecideAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), userId,
+            request with { Action = ReviewAction.Approve }, cancellationToken);
         return IdentityHttpResultMapper.ToHttpResult(result);
     }
 
@@ -37,10 +42,12 @@ public sealed class AdminUsersController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
     public async Task<IResult> BlockUser(
         Guid userId,
-        [FromServices] IIdentityService service,
+        [FromBody] ReviewDecision request,
+        [FromServices] RegistrationReviewService service,
         CancellationToken cancellationToken)
     {
-        var result = await service.SetUserStatusAsync(UserRole.Admin, userId, UserStatus.Blocked, cancellationToken);
+        var result = await service.DecideAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), userId,
+            request with { Action = ReviewAction.Block }, cancellationToken);
         return IdentityHttpResultMapper.ToHttpResult(result);
     }
 

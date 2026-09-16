@@ -44,6 +44,9 @@ test("requisição lenta mantém geometria, bloqueia duplicata e permite recuper
   });
   await page.goto("/");
   const button = page.getByRole("button", { name: "Verificar conexão" });
+  // Comparar a mesma fonte nos dois estados, não fallback versus fonte carregada.
+  // Motivo: docs/mudancas/2026-09-16-02-servicos-e-cliente-http.md
+  await page.evaluate(() => document.fonts.ready);
   const before = await button.boundingBox();
   await button.click();
   await expect(button).toBeDisabled();

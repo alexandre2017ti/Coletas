@@ -15,6 +15,9 @@ public sealed class Courier
     /// <summary>Telefone com WhatsApp.</summary>
     public required string PhoneWhatsApp { get; init; }
 
+    /// <summary>CPF normalizado; nulo apenas para cadastro legado ainda não complementado.</summary>
+    public string? Cpf { get; init; }
+
     /// <summary>Veículos cadastrados.</summary>
     public ICollection<Vehicle> Vehicles { get; init; } = [];
 
@@ -41,8 +44,8 @@ public sealed class Vehicle
     public Guid CourierId { get; init; }
 
     /// <summary>Tipo do veículo.</summary>
-    public VehicleType Type { get; init; }
+    public VehicleType Type { get; set; }
 
     /// <summary>Placa normalizada.</summary>
-    public required string Plate { get; init; }
+    public required string Plate { get; set; }
 }
