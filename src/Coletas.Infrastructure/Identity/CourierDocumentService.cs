@@ -60,13 +60,16 @@ public sealed class CourierDocumentService(ColetasDbContext db, PrivateDocumentS
     public async Task<IdentityResult<CourierDocumentResponse>> DecideDocumentAsync(Guid actor, Guid id, DocumentDecision decision, CancellationToken ct)
     {
         if (!await CourierAccess.IsAdminAsync(db, actor, ct)) return IdentityResult<CourierDocumentResponse>.Forbidden("Apenas administradores.");
-        if (!Enum.IsDefined(decision.Status) || string.IsNullOrWhiteSpace(decision.Reason) || decision.Reason.Length > 500)
-            return IdentityResult<CourierDocumentResponse>.Invalid("Informe status e motivo de até 500 caracteres.");
+        if (!Enum.IsDefined(decision.Status) || decision.Reason?.Length > 500)
+            return IdentityResult<CourierDocumentResponse>.Invalid("Informe status e mensagem de até 500 caracteres.");
         var doc = await db.CourierDocuments.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (doc is null) return IdentityResult<CourierDocumentResponse>.NotFound("Documento não encontrado.");
         if (decision.Status == CourierDocumentStatus.Approved && (doc.StorageKey is null || doc.ExpiresAt <= DateTimeOffset.UtcNow))
             return IdentityResult<CourierDocumentResponse>.Invalid("Documento sem arquivo ou vencido não pode ser aprovado.");
-        doc.Status = decision.Status; doc.ReviewReason = decision.Reason.Trim();
+        // A decisão documental também é compreensível sem texto livre; a justificativa detalhada continua opcional para o administrador.
+        // Mudança: docs/mudancas/2026-09-17-04-inicio-analise-sem-motivo.md
+        var reason = string.IsNullOrWhiteSpace(decision.Reason) ? $"Documento {(decision.Status == CourierDocumentStatus.Approved ? "aprovado" : "reprovado")}." : decision.Reason.Trim();
+        doc.Status = decision.Status; doc.ReviewReason = reason;
         var courier = await db.Couriers.SingleAsync(x => x.Id == doc.CourierId, ct);
         var user = await db.Users.SingleAsync(x => x.Id == courier.UserId, ct);
         // A tela decide sobre a versão que exibiu, não sobre uma revisão posterior.
@@ -77,7 +80,7 @@ public sealed class CourierDocumentService(ColetasDbContext db, PrivateDocumentS
             return IdentityResult<CourierDocumentResponse>.Conflict("Cadastro alterado; recarregue antes de decidir.");
         }
         await reviews.InvalidateAsync(user, actor, "Análise documental alterada; revise o cadastro.", ct);
-        Audit(actor, id, "document.review", $"{decision.Status}: {decision.Reason}"[..Math.Min(500, $"{decision.Status}: {decision.Reason}".Length)]);
+        Audit(actor, id, "document.review", $"{decision.Status}: {reason}"[..Math.Min(500, $"{decision.Status}: {reason}".Length)]);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException) { db.ChangeTracker.Clear(); return IdentityResult<CourierDocumentResponse>.Conflict("Cadastro alterado; recarregue."); }
         return IdentityResult<CourierDocumentResponse>.Ok(ToResponse(doc));

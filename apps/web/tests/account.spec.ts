@@ -50,3 +50,29 @@ test('conta comum não acessa fila administrativa', async ({ page }) => {
   });
   await expect(page.getByRole('alert')).toHaveText('Acesso restrito a administradores.');
 });
+
+test('início de análise usa mensagem padrão e envia somente a versão exibida', async ({ page }) => {
+  let started = false;
+  let requestBody: Record<string, unknown> | undefined;
+  await page.route('**/api/v1/**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/auth/login')) return route.fulfill({ json: { accessToken: 'admin', refreshToken: null } });
+    if (path.endsWith('/auth/me')) return route.fulfill({ json: { userId: 'admin', email: 'admin@example.test', role: 'Admin', status: 'Active', courierId: null, documents: [], vehicles: [] } });
+    if (path.endsWith('/admin/reviews')) return route.fulfill({ json: { items: [{ userId: 'subject', role: 'Establishment', accountStatus: 'Enabled', reviewStatus: started ? 'InReview' : 'Pending', version: started ? 1 : 0 }], total: 1, page: 1, pageSize: 20 } });
+    if (path.endsWith('/admin/reviews/subject')) return route.fulfill({ json: { review: { userId: 'subject', role: 'Establishment', accountStatus: 'Enabled', reviewStatus: started ? 'InReview' : 'Pending', version: started ? 1 : 0 }, history: [] } });
+    if (path.endsWith('/admin/users/subject/profile')) return route.fulfill({ json: { userId: 'subject', email: 'empresa@example.test', role: 'Establishment', status: 'Pending', courierId: null, documents: [], vehicles: [], registration: { name: 'Empresa teste', tradeName: 'Teste', taxId: '31147798000122', phoneWhatsApp: '65999999999' } } });
+    if (path.endsWith('/admin/reviews/subject/decisions')) { requestBody = route.request().postDataJSON(); started = true; return route.fulfill({ status: 200, json: {} }); }
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const client = await import('/src/api/client.ts');
+    await client.signIn('admin@example.test', 'test-password');
+    history.pushState(null, '', '?view=admin-reviews');
+    dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await page.getByRole('button', { name: 'Analisar cadastro', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Iniciar análise', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Iniciar análise', exact: true }).click();
+  await expect.poll(() => requestBody).toEqual({ action: 'Start', expectedVersion: 0 });
+});

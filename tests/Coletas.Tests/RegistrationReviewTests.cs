@@ -165,7 +165,7 @@ public sealed class RegistrationReviewTests
                 courier.Id, new((CourierDocumentType)99, null), default)).StatusCode,
             "vehicle" => (await profiles.EditVehicleAsync(admin.Id, courier.Id, vehicle.Id, new(VehicleType.Car, "invalid"), default)).StatusCode,
             "upload" => (await documents.UploadAsync(admin.Id, courier.Id, (CourierDocumentType)99, null, stream, default)).StatusCode,
-            "decision" => (await documents.DecideDocumentAsync(admin.Id, document.Id, new(CourierDocumentStatus.Rejected, ""), default)).StatusCode,
+            "decision" => (await documents.DecideDocumentAsync(admin.Id, document.Id, new((CourierDocumentStatus)99, "Teste"), default)).StatusCode,
             "unauthorized-vehicle" => (await profiles.EditVehicleAsync(Guid.NewGuid(), courier.Id, vehicle.Id, new(VehicleType.Car, "DEF1G23"), default)).StatusCode,
             "unauthorized-upload" => (await documents.UploadAsync(Guid.NewGuid(), courier.Id, CourierDocumentType.DriverLicense, null, stream, default)).StatusCode,
             "unauthorized-decision" => (await documents.DecideDocumentAsync(owner.Id, document.Id, new(CourierDocumentStatus.Rejected, "Teste"), default)).StatusCode,
@@ -180,6 +180,20 @@ public sealed class RegistrationReviewTests
         Assert.Equal(UserStatus.Active, owner.Status);
         Assert.False((await db.SecurityTokens.SingleAsync()).Used);
         Assert.Empty(db.ReviewEvents);
+    }
+
+    [Fact]
+    public async Task DocumentDecisionUsesNeutralMessageWhenTheAdministratorDoesNotWriteOne()
+    {
+        await using var db = Database();
+        var admin = NewUser(UserRole.Admin, UserStatus.Active); var owner = NewUser(UserRole.Courier);
+        var courier = new Courier { UserId = owner.Id, FullName = "Teste", Cpf = "52998224725", PhoneWhatsApp = "65999999999" };
+        var document = new CourierDocument { CourierId = courier.Id, Type = CourierDocumentType.DriverLicense, Status = CourierDocumentStatus.UnderReview, StorageKey = "file", ExpiresAt = DateTimeOffset.UtcNow.AddDays(20) };
+        db.Users.AddRange(admin, owner); db.Couriers.Add(courier); db.CourierDocuments.Add(document); await db.SaveChangesAsync();
+        var documents = new CourierDocumentService(db, new PrivateDocumentStore(Options.Create(new PrivateDocumentOptions())), Service(db));
+
+        Assert.True((await documents.DecideDocumentAsync(admin.Id, document.Id, new(CourierDocumentStatus.Approved, null), default)).IsSuccess);
+        Assert.Equal("Documento aprovado.", (await db.CourierDocuments.SingleAsync()).ReviewReason);
     }
 
     [Fact]
@@ -266,16 +280,27 @@ public sealed class RegistrationReviewTests
         Assert.Equal(403, (await service.GetAsync(Guid.NewGuid(), subject.Id, default)).StatusCode);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    public async Task ReasonIsMandatory(string reason)
+    [Fact]
+    public async Task DecisionsUseNeutralMessageWhenTheAdministratorDoesNotWriteOne()
     {
         await using var db = Database();
         var admin = NewUser(UserRole.Admin, UserStatus.Active); var subject = NewUser(UserRole.Establishment);
         db.Users.AddRange(admin, subject); await db.SaveChangesAsync();
-        Assert.Equal(400, (await Service(db).DecideAsync(admin.Id, subject.Id, new(0, ReviewAction.Start, reason), default)).StatusCode);
-        Assert.Empty(db.ReviewEvents);
+        Assert.True((await Service(db).DecideAsync(admin.Id, subject.Id, new(0, ReviewAction.Start, null, "Nota interna"), default)).IsSuccess);
+        var review = await db.ReviewEvents.SingleAsync();
+        Assert.Equal("Cadastro em análise.", review.PublicReason);
+        Assert.Equal("Nota interna", review.InternalNote);
+    }
+
+    [Fact]
+    public async Task ApprovalUsesNeutralMessageWhenTheAdministratorDoesNotWriteOne()
+    {
+        await using var db = Database();
+        var admin = NewUser(UserRole.Admin, UserStatus.Active); var subject = NewUser(UserRole.Establishment);
+        subject.ReviewStatus = ReviewStatus.InReview;
+        db.Users.AddRange(admin, subject); await db.SaveChangesAsync();
+        Assert.True((await Service(db).DecideAsync(admin.Id, subject.Id, new(0, ReviewAction.Approve, null), default)).IsSuccess);
+        Assert.Equal("Cadastro aprovado.", (await db.ReviewEvents.SingleAsync()).PublicReason);
     }
 
     [Fact]

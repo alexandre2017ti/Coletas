@@ -28,8 +28,8 @@ public sealed class AdminUsersController : ControllerBase
         [FromServices] RegistrationReviewService service,
         CancellationToken cancellationToken)
     {
-        // Compatibilidade de rota, não de bypass: a versão e o motivo passam a ser obrigatórios.
-        // Mudança: docs/mudancas/2026-09-15-01-analise-administrativa.md
+        // Compatibilidade de rota, não de bypass: a versão ainda protege contra decisão desatualizada; a mensagem é opcional.
+        // Mudança: docs/mudancas/2026-09-17-04-inicio-analise-sem-motivo.md
         var result = await service.DecideAsync(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), userId,
             request with { Action = ReviewAction.Approve }, cancellationToken);
         return IdentityHttpResultMapper.ToHttpResult(result);

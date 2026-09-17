@@ -69,9 +69,13 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
     public async Task<IdentityResult<ReviewItem>> DecideAsync(Guid actor, Guid userId, ReviewDecision request, CancellationToken ct)
     {
         if (!await IsAdminAsync(actor, ct)) return IdentityResult<ReviewItem>.Forbidden("Apenas administradores.");
-        if (!Enum.IsDefined(request.Action) || request.ExpectedVersion < 0 || string.IsNullOrWhiteSpace(request.Reason)
-            || request.Reason.Length > 500 || request.InternalNote?.Length > 1000)
-            return IdentityResult<ReviewItem>.Invalid("Informe decisão, versão e motivo de até 500 caracteres; nota interna até 1000.");
+        if (!Enum.IsDefined(request.Action) || request.ExpectedVersion < 0
+            || request.Reason?.Length > 500
+            || request.InternalNote?.Length > 1000)
+            return IdentityResult<ReviewItem>.Invalid("Informe decisão e versão; mensagem de até 500 caracteres e nota interna de até 1000.");
+        // A mensagem é opcional em todas as decisões; o texto padrão mantém o histórico compreensível sem incentivar justificativas artificiais.
+        // Mudança: docs/mudancas/2026-09-17-04-inicio-analise-sem-motivo.md
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? DefaultMessage(request.Action) : request.Reason.Trim();
         var user = await db.Users.SingleOrDefaultAsync(x => x.Id == userId, ct);
         if (user is null) return IdentityResult<ReviewItem>.NotFound("Cadastro não encontrado.");
         if (user.Role is not (UserRole.Courier or UserRole.Establishment))
@@ -96,7 +100,7 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
         user.ReviewStatus = RegistrationReview.Next(user.ReviewStatus, request.Action);
         user.Status = request.Action == ReviewAction.Block ? UserStatus.Blocked
             : user.ReviewStatus == ReviewStatus.Approved ? UserStatus.Active : UserStatus.Pending;
-        user.StatusReason = request.Reason.Trim();
+        user.StatusReason = reason;
         user.ReviewVersion++;
         db.ReviewEvents.Add(new ReviewEvent
         {
@@ -104,7 +108,7 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
             ActorId = actor,
             Version = user.ReviewVersion,
             Action = request.Action.ToString(),
-            PublicReason = request.Reason.Trim(),
+            PublicReason = reason,
             InternalNote = request.InternalNote?.Trim()
         });
         if (request.Action is not ReviewAction.Start) await sessions.RevokeAsync(user, ct);
@@ -117,6 +121,16 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
 
     private static bool IsApproved(CourierDocument? doc) => doc is { StorageKey: not null, Status: CourierDocumentStatus.Approved }
         && doc.ExpiresAt > DateTimeOffset.UtcNow;
+    private static string DefaultMessage(ReviewAction action) => action switch
+    {
+        ReviewAction.Start => "Cadastro em análise.",
+        ReviewAction.Approve => "Cadastro aprovado.",
+        ReviewAction.RequestCorrection => "Correção solicitada no cadastro.",
+        ReviewAction.Reject => "Cadastro não aprovado.",
+        ReviewAction.Block => "Acesso bloqueado.",
+        ReviewAction.Unblock => "Acesso desbloqueado.",
+        _ => "Decisão registrada."
+    };
     private static IdentityResult<ReviewItem> Stale() => IdentityResult<ReviewItem>.Conflict("Cadastro alterado. Recarregue antes de decidir.");
     private static ReviewItem ToItem(User user) => new(user.Id, user.Role.ToString(),
         user.Status == UserStatus.Blocked ? "Blocked" : "Enabled", user.ReviewStatus.ToString(), user.ReviewVersion, user.CreatedAt);

@@ -28,6 +28,11 @@ test('cadastro, documentos e aprovação pelo navegador com PostgreSQL real', as
     await expect(target.getByRole('heading', { name: 'Minha conta', exact: true })).toBeVisible();
   }
   async function decision(label: string, index = 0) {
+    if (label === 'Iniciar análise') {
+      await admin.getByRole('button', { name: label, exact: true }).click();
+      await expect(admin.getByText('Análise: Em análise')).toBeVisible();
+      return;
+    }
     await admin.getByLabel('Motivo público', { exact: true }).fill('Conferência fictícia de homologação');
     await admin.getByRole('button', { name: label, exact: true }).nth(index).click();
     await expect(admin.getByRole('alertdialog')).toBeVisible();

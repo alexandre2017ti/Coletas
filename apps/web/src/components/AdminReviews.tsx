@@ -24,7 +24,6 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState<{ action: string; documentId?: string } | null>(null);
-  const [fieldError, setFieldError] = useState("");
   const reload = useCallback(async (signal?: AbortSignal) => {
     const [review, account] = await Promise.all([
       api<ReviewDetail>(`/admin/reviews/${userId}`, { signal }),
@@ -37,9 +36,18 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
   function propose(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const button = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    if (!reason.trim()) { setFieldError("Informe um motivo público."); event.currentTarget.querySelector<HTMLInputElement>('[name="reason"]')?.focus(); return; }
-    setFieldError("");
-    setPending({ action: button?.value ?? "Start", documentId: button?.dataset.document });
+    setPending({ action: button?.value ?? "", documentId: button?.dataset.document });
+  }
+  async function startAnalysis() {
+    if (!detail) return;
+    await action.run(async signal => {
+      await api(`/admin/reviews/${userId}/decisions`, {
+        method: "POST",
+        body: jsonBody({ action: "Start", expectedVersion: detail.review.version }),
+        signal,
+      });
+      if (!signal.aborted) await reload(signal);
+    });
   }
   async function decide() {
     if (!pending || !detail) return;
@@ -58,6 +66,8 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
     ...(review && ["Pending", "NeedsCorrection"].includes(review.reviewStatus) ? ["Start"] : []),
     ...(review?.reviewStatus === "InReview" ? ["Approve", "RequestCorrection", "Reject"] : []), "Block",
   ];
+  const canStartAnalysis = actions.includes("Start");
+  const decisionActions = actions.filter(value => value !== "Start");
   return <VStack gap={5}>
     <HStack gap={3} wrap><Button variant="outline" onClick={onBack} disabled={action.busy}>Voltar à fila</Button><Button onClick={() => void action.run(reload)} disabled={action.busy}>Recarregar cadastro</Button></HStack>
     <AccountFeedback error={action.error} message={action.busy ? "Carregando…" : ""} />
@@ -66,10 +76,17 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
       <Paragraph>Análise: {labels[detail.review.reviewStatus]} · Versão {detail.review.version}</Paragraph>
       {profile.vehicles.map(vehicle => <Paragraph key={vehicle.id}>Veículo: {vehicle.type === "Car" ? "Carro" : "Motocicleta"} · {vehicle.plate}</Paragraph>)}
       <Heading level={3}>Documentos privados</Heading><DocumentList profile={profile} />
+      {canStartAnalysis && <Surface bordered inset="md"><VStack gap={3}>
+        <Text>Ao iniciar, o titular verá apenas que o cadastro está em análise. Nenhuma justificativa é necessária nesta etapa.</Text>
+        <HStack gap={3} wrap><Button onClick={() => void startAnalysis()} disabled={action.busy}>Iniciar análise</Button></HStack>
+      </VStack></Surface>}
       <Form noValidate onSubmit={propose}>
-        <AccountInput name="reason" label="Motivo público" value={reason} onChange={e => setReason(e.target.value)} maxLength={500} placeholder="Explique ao titular o resultado ou a correção necessária" required error={fieldError} disabled={action.busy} />
-        <AccountInput name="internalNote" label="Observação interna (opcional)" value={note} onChange={e => setNote(e.target.value)} maxLength={1000} placeholder="Visível somente para administradores" disabled={action.busy} />
-        <HStack gap={3} wrap>{actions.map(value => <Button key={value} type="submit" value={value} tone={value === "Block" || value === "Reject" ? "danger" : "accent"} disabled={action.busy}>{labels[value]}</Button>)}</HStack>
+        {decisionActions.length > 0 && <>
+          <Heading level={3}>Outras decisões</Heading>
+          <AccountInput name="reason" label="Mensagem ao titular (opcional)" value={reason} onChange={e => setReason(e.target.value)} maxLength={500} placeholder="Se necessário, explique o resultado ou a correção" disabled={action.busy} />
+          <AccountInput name="internalNote" label="Observação interna (opcional)" value={note} onChange={e => setNote(e.target.value)} maxLength={1000} placeholder="Visível somente para administradores" disabled={action.busy} />
+          <HStack gap={3} wrap>{decisionActions.map(value => <Button key={value} type="submit" value={value} tone={value === "Block" || value === "Reject" ? "danger" : "accent"} disabled={action.busy}>{labels[value]}</Button>)}</HStack>
+        </>}
         {profile.documents.map(doc => <HStack key={doc.id} gap={3} wrap>
           <Text>{doc.type === "DriverLicense" ? "CNH" : "Documento do veículo"} — {doc.status}</Text>
           <Button type="submit" variant="outline" value="Approved" data-document={doc.id} disabled={action.busy || !doc.hasFile}>Aprovar documento</Button>
@@ -87,7 +104,7 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
     <AlertDialog.Root open={!!pending} onOpenChange={open => { if (!open && !action.busy) setPending(null); }}>
       <AlertDialog.Portal><AlertDialog.Overlay /><AlertDialog.Content>
         <AlertDialog.Header><AlertDialog.Title>Confirmar decisão</AlertDialog.Title><AlertDialog.Description>
-          {pending?.documentId ? "A decisão documental exige nova análise do cadastro." : labels[pending?.action ?? ""]} O motivo será visível ao titular. A decisão ficará no histórico e poderá revogar sessões.
+          {pending?.documentId ? "A decisão documental exige nova análise do cadastro." : labels[pending?.action ?? ""]} A mensagem preenchida será visível ao titular; sem ela, o sistema registrará uma mensagem padrão. A decisão ficará no histórico e poderá revogar sessões.
         </AlertDialog.Description></AlertDialog.Header>
         <AlertDialog.Body><Paragraph>{reason}</Paragraph><AccountFeedback error={action.error} /></AlertDialog.Body>
         <AlertDialog.Footer><AlertDialog.Cancel asChild><Button variant="outline" disabled={action.busy}>Cancelar</Button></AlertDialog.Cancel>
