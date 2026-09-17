@@ -14,6 +14,10 @@ import { DeliveryDetails, DeliveryList } from "./components/DeliveryList";
 import { PreviewRequest } from "./components/PreviewRequest";
 import { Overview, CourierPreview } from "./components/Screens";
 import { Registration } from "./components/Registration";
+import { AccessPage } from "./components/AccessPage";
+import { AccountPage } from "./components/AccountPage";
+import { AdminReviews } from "./components/AdminReviews";
+import { useSession } from "./api/client";
 import { navigate, snapshot, subscribe } from "./navigation";
 import type { DeliveryExample } from "./data/demo";
 
@@ -23,20 +27,24 @@ const destinations = [
   { view: "courier", label: "Visão do entregador", icon: "bike" },
   { view: "register-establishment", label: "Cadastrar estabelecimento", icon: "store" },
   { view: "register-courier", label: "Cadastrar entregador", icon: "bike" },
+  { view: "login", label: "Entrar", icon: "shield" },
+  { view: "account", label: "Minha conta", icon: "shield" },
+  { view: "admin-reviews", label: "Análise administrativa", icon: "shield" },
 ] as const;
 
 export default function App() {
   const query = useSyncExternalStore(subscribe, snapshot);
   const parameters = new URLSearchParams(query);
   const view = parameters.get("view") ?? "overview";
-  const current = destinations.find((destination) => destination.view === view);
+  const { profile } = useSession();
+  const current = destinations.find((destination) => destination.view === view)
+    ?? (view === "recovery" ? { label: "Recuperar acesso" } : view === "reset-password" ? { label: "Redefinir senha" } : undefined);
   const [draft, setDraft] = useState({ pickup: "", destination: "" });
   const [details, setDetails] = useState<DeliveryExample | null>(null);
   const detailTrigger = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    document.title = `${current?.label ?? "Página não encontrada"} — Coletas`;
-  }, [current]);
+  const title = current?.label ?? "Página não encontrada";
+  useEffect(() => { document.title = `${title} — Coletas`; }, [title]);
 
   // Motivo: endereços ficam apenas na memória; sair do documento perde a prévia.
   // Mudança: docs/mudancas/2026-09-10-01-interface-operacional.md
@@ -78,7 +86,7 @@ export default function App() {
                     gap={2}
                     wrap
                   >
-                    {destinations.map((destination) => (
+                    {destinations.filter(destination => destination.view !== "admin-reviews" || profile?.role === "Admin").map((destination) => (
                       <NavList.Item key={destination.view}>
                         <NavList.Link
                           href={`?view=${destination.view}`}
@@ -140,7 +148,9 @@ export default function App() {
                   Ambiente de demonstração
                 </Badge>
               </Stack>
-              <Surface level="subtle" inset="md" radius="subtle">
+              {/* Região nomeada permite localizar o aviso por leitor de tela.
+                  Mudança: docs/mudancas/2026-09-17-01-aceite-fase-1.md */}
+              <Surface level="subtle" inset="md" radius="subtle" role="region" aria-label="Limites da demonstração">
                 <HStack align="start" gap={3}>
                   <Glyph name="info" />
                   <Paragraph variant="body-sm">
@@ -175,10 +185,10 @@ export default function App() {
                               ? "As informações que importam antes de sair."
                               : view === "register-courier" || view === "register-establishment"
                                 ? "Preencha os dados abaixo para enviar seu cadastro para análise."
-                                : "Este endereço não corresponde a uma tela da prévia."}
+                                : current ? "Acesso seguro e acompanhamento do cadastro." : "Este endereço não corresponde a uma tela da prévia."}
                       </Paragraph>
                     </VStack>
-                    {current && !view.startsWith("register-") && view !== "courier" && (
+                    {["overview", "deliveries"].includes(view) && (
                       <PreviewRequest draft={draft} onDraftChange={setDraft} />
                     )}
                   </Stack>
@@ -192,6 +202,9 @@ export default function App() {
                   {view === "courier" && <CourierPreview />}
                   {view === "register-establishment" && <Registration key="establishment" kind="establishment" />}
                   {view === "register-courier" && <Registration key="courier" kind="courier" />}
+                  {(view === "login" || view === "recovery" || view === "reset-password") && <AccessPage key={view} mode={view} />}
+                  {view === "account" && <AccountPage />}
+                  {view === "admin-reviews" && <AdminReviews />}
                   {!current && (
                     <Button href="?view=overview" onClick={navigate}>
                       Voltar à visão geral

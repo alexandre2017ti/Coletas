@@ -1,5 +1,15 @@
 # UX Contract — Coletas
 
+## Atualização de acesso e análise — 2026-09-17
+
+As descrições de prévia abaixo documentam a fundação histórica, não limitam o acesso/cadastro integrado atual. Fontes atuais: AuthController, SessionsController, RecoveryController, AccountDocumentsController e RegistrationReviewsController. Registro: docs/mudancas/2026-09-17-01-aceite-fase-1.md.
+
+AccountInput/AccountFeedback são controles compartilhados das telas de acesso e análise, compostos por Field/Input/PasswordToggleField Brick 0.2.2. Formulários de cadastro público continuam em Registration. AccountPage oferece documentos privados e veículo; AdminReviews usa fila paginada de 20 registros e confirmação AlertDialog. Estado da seleção administrativa fica apenas na memória por conter contexto cadastral restrito; recarregar exige reautenticação e voltar à fila. Não persistir identificadores de pessoas na URL.
+
+Senha fica mascarada com revelação acessível. Login navega à conta; logout limpa memória mesmo se revogação remota não for confirmada. Documento/veículo alterado exige novo login. Recuperação genérica não confirma existência de conta; redefinição remove token do fragmento após leitura. Data de validade é digitada em AAAA-MM-DD na web, sem calendário; validade documental exibida em UTC, histórico administrativo informa fuso do dispositivo. Escolhas curtas usam RadioGroup. Seletor de arquivo nativo de um arquivo é a exceção permitida pelo guia FileUpload; textos do popup pertencem ao navegador/sistema.
+
+Permissões são verificadas no servidor. Conflito 409 mantém motivo e informa recarregamento; não reaplicar decisão automaticamente. Upload não torna arquivo público. Prévia de entregas continua fictícia e sem despacho. Testes: account.spec.ts, phase1-real.spec.ts e IdentityFlowTests. Aceite físico/SMTP externo pendentes; não inferir esses aceites dos mocks ou bundles.
+
 ## Contexto e fontes
 
 Portal de estabelecimentos e prévia web da visão do entregador. Fontes: `README.md`, `docs/PLANO-DO-PROJETO.md` (fluxos e fases) e `docs/DECISOES-ARQUITETURAIS.md` DA-003/004. Revisadas em 2026-09-10. A API atual em `src/Coletas.Api/Program.cs` possui prontidão e metadados, não entregas/cobrança/autorização.

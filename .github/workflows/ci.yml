@@ -55,7 +55,7 @@ jobs:
       - if: matrix.app == 'web'
         run: npx playwright install --with-deps chromium && npx playwright test
       - if: matrix.app == 'mobile'
-        run: npx tsc --noEmit && npx expo install --check && npx expo export --platform android --output-dir dist/android && npx expo export --platform ios --output-dir dist/ios
+        run: npm test && npx tsc --noEmit && npx expo install --check && npx expo export --platform android --output-dir dist/android && npx expo export --platform ios --output-dir dist/ios
   compose:
     runs-on: ubuntu-latest
     steps:

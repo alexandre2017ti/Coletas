@@ -69,6 +69,13 @@ public sealed class CourierDocumentService(ColetasDbContext db, PrivateDocumentS
         doc.Status = decision.Status; doc.ReviewReason = decision.Reason.Trim();
         var courier = await db.Couriers.SingleAsync(x => x.Id == doc.CourierId, ct);
         var user = await db.Users.SingleAsync(x => x.Id == courier.UserId, ct);
+        // A tela decide sobre a versão que exibiu, não sobre uma revisão posterior.
+        // Mudança: docs/mudancas/2026-09-16-03-integracao-acesso-administracao.md
+        if (decision.ExpectedVersion.HasValue && decision.ExpectedVersion != user.ReviewVersion)
+        {
+            db.ChangeTracker.Clear();
+            return IdentityResult<CourierDocumentResponse>.Conflict("Cadastro alterado; recarregue antes de decidir.");
+        }
         await reviews.InvalidateAsync(user, actor, "Análise documental alterada; revise o cadastro.", ct);
         Audit(actor, id, "document.review", $"{decision.Status}: {decision.Reason}"[..Math.Min(500, $"{decision.Status}: {decision.Reason}".Length)]);
         try { await db.SaveChangesAsync(ct); }

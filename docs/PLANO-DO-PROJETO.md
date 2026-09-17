@@ -103,6 +103,27 @@ Esta preparação visual não conclui funcionalidades de negócio das fases segu
 
 ### Fase 1 — Acesso e cadastros
 
+#### Situação consolidada em 2026-09-17
+
+Esta seção atualiza o estado histórico abaixo, sem apagar evidências anteriores. Registro: [aceite integrado](mudancas/2026-09-17-01-aceite-fase-1.md). Roteiro: [homologação](HOMOLOGACAO-FASE-1.md).
+
+- [x] Fluxo web real em PostgreSQL isolado: cadastrar, acessar, enviar documentos, analisar, aprovar e acessar conta liberada.
+- [x] Correção, reprovação, bloqueio e concorrência administrativa 200/409 com um único evento persistido.
+- [x] Login/onboarding, renovação, logout e documentos privados; testes de autorização, edição de veículo e versão documental.
+- [x] Recuperação implementada e testada localmente: token de uso único, expiração, revogação e resposta genérica.
+- [ ] Recebimento real de e-mail — usuário ainda não possui provedor SMTP.
+- [x] Mobile adaptado ao CPF obrigatório e contratos de acesso/documentos; TypeScript, três testes e bundles Android/iOS aprovados.
+- [ ] Homologação física Android — usuário possui aparelho USB; falta preparar ferramentas/cliente e executar o roteiro.
+- [ ] Homologação física iOS — aparelho indisponível.
+- [x] Demonstração atualizada em API 5080/site 5173, readiness 200 e cadastro existente preservado.
+- [x] Testes locais: 150 .NET, 90,28% de linhas; 72 web; aceite PostgreSQL separado aprovado.
+- [~] Envio das mudanças locais e acompanhamento do workflow GitHub.
+- [ ] Confirmar/configurar checks obrigatórios — proteção administrativa inacessível ao conector (403); consulta pública da branch informa protected=false.
+
+A Fase 1 não está 100% homologada enquanto SMTP externo e aparelhos permanecerem pendentes. A prévia de entregas não conclui a Fase 2.
+
+- [~] Integrar e homologar acesso, recuperação, documentos e administração após refatoração; adaptar mobile e revisar CI. [Rodada atual](mudancas/2026-09-16-03-integracao-acesso-administracao.md).
+
 - [x] Itens 4 e 5: separar responsabilidades de perfil/documentos/bootstrap e unificar formulário/cliente HTTP — 145 testes .NET, cobertura de linhas 84,03%, 66 testes web desktop/mobile, build/lint e formatação aprovados. Validação local com EF InMemory e API simulada no navegador; não inclui publicação/homologação PostgreSQL. [Registro e limites da auditoria](mudancas/2026-09-16-02-servicos-e-cliente-http.md).
 
 - [x] Corrigir itens 1, 2 e 3 da revisão: invalidação cadastral, remoção das decisões duplicadas e emissão única de JWT — 140 testes aprovados, cobertura de linhas 80,60% e formatação conferida. Validação EF InMemory/HTTP local; homologação PostgreSQL e atualização da demonstração continuam pendentes. [Registro](mudancas/2026-09-16-01-refatoracao-identidade.md).
@@ -111,10 +132,10 @@ Esta preparação visual não conclui funcionalidades de negócio das fases segu
 
 - [x] Implementar e testar exclusividade de CNPJ/e-mail/telefone de empresas e CPF/e-mail/telefone/placa de entregadores — 100 testes .NET, 18 testes web e sete cenários concorrentes em PostgreSQL isolado aprovados. Registros: [empresa](mudancas/2026-09-14-03-identificadores-exclusivos-empresa.md) e [entregador](mudancas/2026-09-14-04-identificadores-exclusivos-entregador.md).
 - [x] Ativar exclusividade na demonstração — cadastros antigos removidos com autorização, migration e índices conferidos, API 5080 atualizada e validação de CPF via proxy confirmada. [Limpeza autorizada](mudancas/2026-09-14-05-limpeza-cadastros-demo.md).
-- [ ] Adaptar cliente mobile ao CPF obrigatório nos novos cadastros — nenhum entregador legado restante na demonstração após limpeza autorizada.
+- [x] Adaptar cliente mobile ao CPF obrigatório nos novos cadastros — validado tecnicamente em 17/09; aceite físico separado acima.
 
 - [x] Validar cadastros pela API real com PostgreSQL — migration aditiva aplicada e reexecutada, 9 respostas HTTP esperadas e consultas SQL aprovadas em 2026-09-14. [Registro](mudancas/2026-09-14-02-cadastro-postgres-real.md).
-- [ ] Homologar envio pelo navegador até o PostgreSQL com a API atualizada na demonstração — API 5080 atualizada; validação de CPF e prontidão pelo proxy aprovadas. Fluxo completo do formulário com a versão atual ainda pendente.
+- [x] Homologar envio pelo navegador até o PostgreSQL — fluxo completo aprovado em banco isolado em 17/09; mesma versão publicada na demonstração sem inserir fixtures no banco existente.
 
 - [x] Validar alinhamento, máscaras e edição da placa nos cadastros web — 18 testes desktop/mobile aprovados, build web aprovado; consulta CNPJ e envio exercitados com respostas simuladas. [Aceite dos formulários](mudancas/2026-09-14-01-aceite-formularios.md). Integração com API real permanece pendente.
 

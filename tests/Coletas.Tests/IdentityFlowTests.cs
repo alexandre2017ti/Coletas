@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using Coletas.Domain.Identity;
 using Coletas.Infrastructure.Persistence;
+using Coletas.Infrastructure.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public sealed class IdentityFlowTests
 {
     private sealed class Factory : WebApplicationFactory<Program>
     {
+        public IRecoveryMailer? Mailer { get; init; }
         private readonly string databaseName = Guid.NewGuid().ToString();
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -35,11 +37,146 @@ public sealed class IdentityFlowTests
                 services.RemoveAll<DbContextOptions<ColetasDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ColetasDbContext>>();
                 services.AddDbContext<ColetasDbContext>(options => options.UseInMemoryDatabase(databaseName));
+                if (Mailer is not null) services.AddSingleton(Mailer);
             });
         }
     }
 
     private const string Password = "Test-only-password-123";
+
+    private sealed class CapturingMailer : IRecoveryMailer
+    {
+        public bool IsConfigured => true;
+        public string? Token { get; private set; }
+        public Task SendAsync(string recipient, string token, CancellationToken ct)
+        {
+            Token = token;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecoveryLinkExpiresOrResetsOnceAndRevokesSessions(bool expired)
+    {
+        // Captura só em memória: prova o contrato, não entrega SMTP externa.
+        // Mudança: docs/mudancas/2026-09-17-01-aceite-fase-1.md
+        var mailer = new CapturingMailer();
+        await using var factory = new Factory { Mailer = mailer };
+        using var client = factory.CreateClient();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ColetasDbContext>();
+        db.Users.Add(new User { Email = "recovery@example.test", PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password), Role = UserRole.Establishment, Status = UserStatus.Active });
+        await db.SaveChangesAsync();
+        await Authenticate(client, "recovery@example.test");
+        var unknown = await client.PostAsJsonAsync("/api/v1/auth/recovery", new { email = "missing@example.test" });
+        Assert.Null(mailer.Token);
+        var known = await client.PostAsJsonAsync("/api/v1/auth/recovery", new { email = "recovery@example.test" });
+        Assert.Equal(await unknown.Content.ReadAsStringAsync(), await known.Content.ReadAsStringAsync());
+        Assert.NotNull(mailer.Token);
+        var stored = await db.SecurityTokens.SingleAsync(x => x.Purpose == "recovery");
+        Assert.NotEqual(mailer.Token, stored.Hash);
+        if (expired)
+        {
+            db.Entry(stored).Property(x => x.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        var invalid = await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = mailer.Token, password = new string('á', 37) });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var reset = await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = mailer.Token, password = "New-test-password-456" });
+        Assert.Equal(expired ? HttpStatusCode.BadRequest : HttpStatusCode.NoContent, reset.StatusCode);
+        Assert.Equal(expired ? HttpStatusCode.OK : HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = mailer.Token, password = Password })).StatusCode);
+        db.ChangeTracker.Clear();
+        Assert.True(BCrypt.Net.BCrypt.Verify(expired ? Password : "New-test-password-456", (await db.Users.SingleAsync()).PasswordHash));
+    }
+
+    [Fact]
+    public async Task PrivateDocumentUploadRevokesSessionAndEnforcesOwnership()
+    {
+        await using var factory = new Factory();
+        using var client = factory.CreateClient();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ColetasDbContext>();
+        var directory = Path.Combine(Path.GetTempPath(), "coletas-doc-test-" + Guid.NewGuid().ToString("N"));
+        var options = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Coletas.Infrastructure.Identity.PrivateDocumentOptions>>();
+        options.Value.RootPath = directory;
+        try
+        {
+            var register = await client.PostAsJsonAsync("/api/v1/auth/register/couriers", new { email = "files@test.com", password = Password, fullName = "Teste", phoneWhatsApp = "65999999999", vehicleType = "Motorcycle", plate = "ABC1234", cpf = "52998224725" });
+            Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            var courier = await db.Couriers.SingleAsync();
+            using var login = await client.PostAsJsonAsync("/api/v1/auth/onboarding/login", new { email = "files@test.com", password = Password });
+            var auth = await login.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.GetProperty("accessToken").GetString());
+            using var missingFile = new MultipartFormDataContent();
+            missingFile.Add(new StringContent("DriverLicense"), "type");
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"/api/v1/couriers/{courier.Id}/documents/upload", missingFile)).StatusCode);
+            using var body = new MultipartFormDataContent();
+            body.Add(new StringContent("DriverLicense"), "type");
+            body.Add(new StringContent(DateTimeOffset.UtcNow.AddYears(1).ToString("O")), "expiresAt");
+            body.Add(new ByteArrayContent("%PDF-1.4 test"u8.ToArray()), "file", "cnh.pdf");
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/v1/couriers/{courier.Id}/documents/upload", body)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+            var doc = await db.CourierDocuments.SingleAsync();
+            using var ownerLogin = await client.PostAsJsonAsync("/api/v1/auth/onboarding/login", new { email = "files@test.com", password = Password });
+            var ownerAuth = await ownerLogin.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerAuth.GetProperty("accessToken").GetString());
+            using var file = await client.GetAsync($"/api/v1/couriers/{courier.Id}/documents/{doc.Id}/file");
+            Assert.Equal(HttpStatusCode.OK, file.StatusCode);
+            Assert.Equal("attachment", file.Content.Headers.ContentDisposition?.DispositionType);
+            Assert.True(file.Headers.CacheControl?.NoStore);
+            Assert.Equal("%PDF-1.4 test", await file.Content.ReadAsStringAsync());
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/v1/admin/users/{courier.UserId}/profile")).StatusCode);
+            var vehicle = await db.Vehicles.SingleAsync();
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/v1/couriers/{courier.Id}/vehicles/{vehicle.Id}", new { type = "Car", plate = "INVALID" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/v1/couriers/{courier.Id}/vehicles/{vehicle.Id}", new { type = "Car", plate = "DEF1G23" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+            var other = new User { Email = "other-files@test.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password), Role = UserRole.Courier, Status = UserStatus.Active };
+            db.Users.Add(other);
+            await db.SaveChangesAsync();
+            await Authenticate(client, other.Email);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/v1/couriers/{courier.Id}/documents/{doc.Id}/file")).StatusCode);
+            var admin = new User { Email = "doc-admin@test.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password), Role = UserRole.Admin, Status = UserStatus.Active };
+            db.Users.Add(admin);
+            await db.SaveChangesAsync();
+            await Authenticate(client, admin.Email);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/v1/admin/users/{courier.UserId}/profile")).StatusCode);
+            var endpoint = $"/api/v1/admin/documents/{doc.Id}/decision";
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(endpoint, new { status = "Approved", reason = "Conferido" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(endpoint, new { status = "Approved", reason = "Conferido", expectedVersion = 0 })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(endpoint, new { status = "Approved", reason = "Conferido", expectedVersion = 2 })).StatusCode);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task RecoveryIsGenericWithoutMailerAndInvalidResetIsRejected()
+    {
+        await using var factory = new Factory();
+        using var client = factory.CreateClient();
+        using var response = await client.PostAsJsonAsync("/api/v1/auth/recovery", new { email = "unknown@test.com" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("unknown@test.com", await response.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = "invalid", password = Password })).StatusCode);
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(await scope.ServiceProvider.GetRequiredService<ColetasDbContext>().SecurityTokens.ToListAsync());
+    }
+
+    [Fact]
+    public async Task BootstrapCreatesOneAdminWithAuditAndRejectsWeakPassword()
+    {
+        await using var factory = new Factory();
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<Coletas.Infrastructure.Identity.AdminBootstrapService>();
+        Assert.False(await service.BootstrapAsync("admin@test.com", "short", default));
+        Assert.True(await service.BootstrapAsync("admin@test.com", Password, default));
+        Assert.False(await service.BootstrapAsync("second@test.com", Password, default));
+        var db = scope.ServiceProvider.GetRequiredService<ColetasDbContext>();
+        Assert.Single(await db.Users.ToListAsync());
+        Assert.Single(await db.IdentityAudits.Where(x => x.Action == "admin.bootstrap").ToListAsync());
+    }
 
     [Fact]
     public async Task RefreshRotatesTokenAndReplayRevokesSession()

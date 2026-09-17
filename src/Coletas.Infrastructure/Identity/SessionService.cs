@@ -116,7 +116,10 @@ public sealed class SessionService(ColetasDbContext database, IOptions<JwtOption
 
     public async Task<bool> ResetAsync(string? raw, string? password, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(raw) || raw.Length > 128 || string.IsNullOrWhiteSpace(password) || password.Length is < 12 or > 128) return false;
+        // BCrypt só usa até 72 bytes; manter o mesmo limite do cadastro evita truncamento.
+        // Mudança: docs/mudancas/2026-09-16-03-integracao-acesso-administracao.md
+        if (string.IsNullOrEmpty(raw) || raw.Length > 128 || string.IsNullOrWhiteSpace(password)
+            || password.Length is < 12 or > 128 || Encoding.UTF8.GetByteCount(password) > 72) return false;
         var hash = Hash(raw);
         var token = await database.SecurityTokens.SingleOrDefaultAsync(x => x.Hash == hash && x.Purpose == "recovery", ct);
         if (token is null || token.Used || token.ExpiresAt <= DateTimeOffset.UtcNow) return false;

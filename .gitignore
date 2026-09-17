@@ -13,4 +13,5 @@ artifacts/
 *.user
 .vs/
 **/test-results/
+**/test-results-account/
 **/playwright-report/

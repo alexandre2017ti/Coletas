@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 export type Role = "Admin" | "Operator" | "Establishment" | "Courier";
 export interface Vehicle { id: string; type: string; plate: string }
 export interface AccountDocument { id: string; type: string; status: string; expiresAt: string | null; hasFile: boolean; reason?: string | null }
-export interface Profile { userId: string; email: string; role: Role; status: string; courierId: string | null; vehicles: Vehicle[]; documents: AccountDocument[]; reason?: string | null }
+export interface Profile { userId: string; email: string; role: Role; status: string; courierId: string | null; vehicles: Vehicle[]; documents: AccountDocument[]; reason?: string | null; registration?: { name: string; tradeName: string | null; taxId: string | null; phoneWhatsApp: string } | null }
 export interface AuthResponse { accessToken: string; expiresAt: string; refreshToken: string | null }
 type Session = { profile: Profile | null; error: string };
 let session: Session = { profile: null, error: "" };
@@ -121,25 +121,28 @@ export async function api<T = void>(path: string, init: RequestInit = {}, authen
   return response.status === 204 ? undefined as T : response.json();
 }
 export const jsonBody = (value: unknown) => JSON.stringify(value);
-export async function loadProfile() {
+export async function loadProfile(signal?: AbortSignal) {
   const current = generation;
-  const profile = await api<Profile>("/auth/me");
+  const profile = await api<Profile>("/auth/me", { signal });
   assertCurrent(current);
   publish({ profile, error: "" });
   return profile;
 }
-export async function signIn(email: string, password: string) {
+export async function signIn(email: string, password: string, signal?: AbortSignal) {
   clearSession();
   const current = generation;
-  let response = await transport("/auth/login", { method: "POST", body: jsonBody({ email, password }) });
+  let response = await transport("/auth/login", { method: "POST", body: jsonBody({ email, password }), signal });
   assertCurrent(current);
   if (response.status === 401)
-    response = await transport("/auth/onboarding/login", { method: "POST", body: jsonBody({ email, password }) });
+    response = await transport("/auth/onboarding/login", { method: "POST", body: jsonBody({ email, password }), signal });
   const auth: AuthResponse = await (await checked(response)).json();
   assertCurrent(current);
   accessToken = auth.accessToken;
   refreshToken = auth.refreshToken;
-  return loadProfile();
+  return loadProfile(signal);
+}
+export function registrationChanged() {
+  clearSession("Alteração salva. Entre novamente: o cadastro e os documentos precisam de nova análise.");
 }
 export async function signOut() {
   // Capturar Bearer antes de limpar; falha remota nunca mantém credenciais locais.

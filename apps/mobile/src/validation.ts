@@ -4,7 +4,8 @@ export const vehicleChoices: ReadonlyArray<{ value: VehicleType; label: string }
 export const documentChoices: ReadonlyArray<{ value: DocumentType; label: string }> = [{ value: 'DriverLicense', label: 'CNH' }, { value: 'VehicleRegistration', label: 'Documento do veículo' }];
 export const accountStatus: Record<string, string> = { Pending: 'Aguardando aprovação', Active: 'Conta aprovada', Blocked: 'Conta bloqueada' };
 export const documentStatus: Record<string, string> = { Pending: 'Pendente', UnderReview: 'Em análise', Approved: 'Aprovado', Rejected: 'Reprovado', Expired: 'Vencido', Blocked: 'Bloqueado' };
-export type Registration = { fullName: string; email: string; phoneWhatsApp: string; password: string; confirmation: string; vehicleType: VehicleType; plate: string };
+import { validCpf, validPhone, validPlate } from "../../shared/registrationValidation";
+export type Registration = { cpf: string; fullName: string; email: string; phoneWhatsApp: string; password: string; confirmation: string; vehicleType: VehicleType; plate: string };
 
 export function emailError(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : 'Informe um e-mail válido, como nome@exemplo.com.'; }
 export function passwordError(value: string) {
@@ -13,7 +14,7 @@ export function passwordError(value: string) {
   return value.length < 12 || value.length > 128 ? 'Use entre 12 e 128 caracteres.' : undefined;
 }
 export function registrationErrors(value: Registration): Record<string, string | undefined> {
-  return { fullName: value.fullName.trim() ? undefined : 'Informe seu nome completo.', email: emailError(value.email), phoneWhatsApp: value.phoneWhatsApp.trim() && value.phoneWhatsApp.length <= 30 ? undefined : 'Informe seu WhatsApp com DDD.', password: passwordError(value.password), confirmation: value.confirmation === value.password ? undefined : 'As senhas precisam ser iguais.', plate: value.plate.trim() ? undefined : 'Informe a placa do veículo.' };
+  return { cpf: validCpf(value.cpf) ? undefined : 'Informe um CPF válido.', fullName: value.fullName.trim() ? undefined : 'Informe seu nome completo.', email: emailError(value.email), phoneWhatsApp: validPhone(value.phoneWhatsApp) ? undefined : 'Informe seu WhatsApp com DDD.', password: passwordError(value.password), confirmation: value.confirmation === value.password ? undefined : 'As senhas precisam ser iguais.', plate: validPlate(value.plate) ? undefined : 'Use ABC-1234 ou ABC1D23.' };
 }
 export function expirationIso(value: string): string | null {
   if (!value.trim()) return null;

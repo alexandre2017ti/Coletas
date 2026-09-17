@@ -11,9 +11,15 @@ x-api: &api
     Jwt__Issuer: coletas-api
     Jwt__Audience: coletas-clients
     Jwt__ExpirationMinutes: 15
-    RecoveryMail__PickupDirectory: /app/private/mail
-    RecoveryMail__ResetUrl: http://127.0.0.1:5173/?view=reset-password
-    RecoveryMail__From: no-reply@coletas.local
+    PrivateDocuments__RootPath: /app/private/documents
+    # SMTP é configurado externamente; não anunciar entrega por pickup inexistente.
+    # Mudança: docs/mudancas/2026-09-16-03-integracao-acesso-administracao.md
+    RecoveryMail__Host: ${RECOVERY_SMTP_HOST:-}
+    RecoveryMail__Port: ${RECOVERY_SMTP_PORT:-587}
+    RecoveryMail__Username: ${RECOVERY_SMTP_USERNAME:-}
+    RecoveryMail__Password: ${RECOVERY_SMTP_PASSWORD:-}
+    RecoveryMail__From: ${RECOVERY_SMTP_FROM:-}
+    RecoveryMail__ResetUrl: ${RECOVERY_RESET_URL:-}
   # Motivo: arquivos privados sobrevivem à recriação da API sem exposição HTTP pública.
   # Mudança: docs/mudancas/2026-09-10-16-integracao-fase-1.md
   volumes:

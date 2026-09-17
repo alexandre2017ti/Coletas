@@ -72,7 +72,7 @@ Invoke-WebRequest http://localhost:5080/health/ready
 docker compose down
 ```
 
-Os cadastros da Fase 1 começam com status `Pending` e só podem autenticar depois de aprovação administrativa. O endpoint de documentos deste recorte registra somente metadados; upload privado, recuperação de senha e refresh token ainda não estão implementados. Não coloque a chave JWT em arquivos versionados.
+Os cadastros da Fase 1 começam com status `Pending`: login de onboarding permite acompanhar análise e enviar documentos, sem liberar operação. Contas aprovadas usam login normal e renovação por token de uso único. Upload privado e recuperação estão implementados; entrega de e-mail depende de SMTP configurado. Nunca coloque credenciais em arquivos versionados. Consulte [homologação da Fase 1](HOMOLOGACAO-FASE-1.md).
 
 Parar com down preserva o volume. Não use down -v para parar: essa opção apaga os dados. Redis é temporário na fundação. As portas estão vinculadas a 127.0.0.1 e o Compose é de desenvolvimento; não é uma configuração de produção.
 
@@ -107,7 +107,7 @@ npm run start
 
 Para testar conexão, copie apps/mobile/.env.example para .env e defina EXPO_PUBLIC_API_URL. Android Emulator usa normalmente http://10.0.2.2:5080; aparelho físico precisa do IP LAN do computador. A API deve estar acessível nessa interface: em desenvolvimento local use --urls http://0.0.0.0:5080 em uma rede confiável, com a regra de firewall necessária. O Compose padrão não expõe portas à LAN. Variáveis EXPO_PUBLIC_* são incorporadas ao aplicativo e não podem conter segredos.
 
-Nesta fase o aplicativo não solicita GPS nem recebe chamadas reais. Push, localização em segundo plano, development builds e teste em aparelhos físicos pertencem às fases posteriores.
+Nesta fase o aplicativo oferece cadastro com CPF, login, situação cadastral e envio de documentos. Não solicita GPS nem recebe chamadas reais. A homologação desses fluxos em aparelhos físicos é pendência da Fase 1; push e localização são fases posteriores.
 
 ## Validação
 

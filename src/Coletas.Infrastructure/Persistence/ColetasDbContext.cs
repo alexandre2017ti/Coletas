@@ -3,10 +3,25 @@ using Coletas.Domain.Establishments;
 using Coletas.Domain.Identity;
 using Coletas.Domain.Settings;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 namespace Coletas.Infrastructure.Persistence;
 /// <summary>Persistência do monólito modular.</summary>
 public sealed class ColetasDbContext(DbContextOptions<ColetasDbContext> options) : DbContext(options)
 {
+    /// <inheritdoc />
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try { return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken); }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_ReviewEvents_UserId_Version" })
+        {
+            // O INSERT do histórico pode detectar a mesma corrida antes do UPDATE versionado.
+            // Preservar o tratamento 409 de todos os chamadores, sem ocultar outras constraints.
+            // Mudança: docs/mudancas/2026-09-17-02-conflito-revisao-postgres.md
+            throw new DbUpdateConcurrencyException("A revisão cadastral foi alterada por outra operação.", exception);
+        }
+    }
+
     public DbSet<SecurityToken> SecurityTokens => Set<SecurityToken>();
     public DbSet<IdentityAudit> IdentityAudits => Set<IdentityAudit>();
     public DbSet<ReviewEvent> ReviewEvents => Set<ReviewEvent>();

@@ -14,9 +14,15 @@ public sealed class ProfileService(ColetasDbContext db, RegistrationReviewServic
         var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, ct);
         if (user is null) return null;
         var courier = await db.Couriers.AsNoTracking().Include(x => x.Vehicles).Include(x => x.Documents).SingleOrDefaultAsync(x => x.UserId == userId, ct);
+        var establishment = await db.Establishments.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
+        // Dados pessoais apenas no detalhe autorizado; a fila permanece sem identificadores sensíveis.
+        // Mudança: docs/mudancas/2026-09-16-03-integracao-acesso-administracao.md
+        RegistrationDetails? registration = courier is not null
+            ? new(courier.FullName, null, courier.Cpf, courier.PhoneWhatsApp)
+            : establishment is not null ? new(establishment.LegalName, establishment.TradeName, establishment.TaxId, establishment.PhoneWhatsApp) : null;
         return new(user.Id, user.Email, user.Role, user.Status, courier?.Id,
             courier?.Vehicles.Select(x => new VehicleResponse(x.Id, x.Type, x.Plate)).ToArray() ?? [],
-            courier?.Documents.Select(x => new DocumentProfile(x.Id, x.Type, x.Status, x.ExpiresAt, x.StorageKey != null, x.ReviewReason)).ToArray() ?? [], user.StatusReason);
+            courier?.Documents.OrderByDescending(x => x.CreatedAt).Select(x => new DocumentProfile(x.Id, x.Type, x.Status, x.ExpiresAt, x.StorageKey != null, x.ReviewReason)).ToArray() ?? [], user.StatusReason, registration);
     }
 
     public async Task<UserPage> ListAsync(int page, int pageSize, CancellationToken ct)
