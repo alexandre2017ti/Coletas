@@ -1,7 +1,7 @@
 namespace Coletas.Domain.Identity;
 
 public enum ReviewStatus { Pending, InReview, NeedsCorrection, Approved, Rejected }
-public enum ReviewAction { Start, RequestCorrection, Approve, Reject, Block, Unblock }
+public enum ReviewAction { Start, Reopen, RequestCorrection, Approve, Reject, Block, Unblock }
 
 /// <summary>Transições cadastrais independentes do bloqueio de acesso.</summary>
 public static class RegistrationReview
@@ -9,6 +9,7 @@ public static class RegistrationReview
     public static bool CanTransition(ReviewStatus status, ReviewAction action) => action switch
     {
         ReviewAction.Start => status is ReviewStatus.Pending or ReviewStatus.NeedsCorrection,
+        ReviewAction.Reopen => status == ReviewStatus.Rejected,
         ReviewAction.Approve or ReviewAction.Reject or ReviewAction.RequestCorrection => status == ReviewStatus.InReview,
         ReviewAction.Block or ReviewAction.Unblock => true,
         _ => false
@@ -17,6 +18,7 @@ public static class RegistrationReview
     public static ReviewStatus Next(ReviewStatus status, ReviewAction action) => action switch
     {
         ReviewAction.Start => ReviewStatus.InReview,
+        ReviewAction.Reopen => ReviewStatus.InReview,
         ReviewAction.RequestCorrection => ReviewStatus.NeedsCorrection,
         ReviewAction.Approve => ReviewStatus.Approved,
         ReviewAction.Reject => ReviewStatus.Rejected,

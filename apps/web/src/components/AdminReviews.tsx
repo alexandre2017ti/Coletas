@@ -15,7 +15,7 @@ import { DocumentList, RegistrationSummary } from "./AccountPage";
 type Review = { userId: string; role: string; accountStatus: string; reviewStatus: string; version: number };
 type ReviewDetail = { review: Review; history: Array<{ id: string; action: string; reason: string; internalNote: string | null; createdAt: string; version: number }> };
 type Page = { items: Review[]; total: number; page: number; pageSize: number };
-const labels: Record<string, string> = { Pending: "Pendente", InReview: "Em análise", NeedsCorrection: "Correção solicitada", Approved: "Aprovado", Rejected: "Rejeitado", Start: "Iniciar análise", RequestCorrection: "Solicitar correção", Approve: "Aprovar cadastro", Reject: "Rejeitar cadastro", Block: "Bloquear acesso", Unblock: "Desbloquear acesso", Courier: "Entregador", Establishment: "Estabelecimento" };
+const labels: Record<string, string> = { Pending: "Pendente", InReview: "Em análise", NeedsCorrection: "Correção solicitada", Approved: "Aprovado", Rejected: "Rejeitado", Start: "Iniciar análise", Reopen: "Reabrir análise", RequestCorrection: "Solicitar correção", Approve: "Aprovar cadastro", Reject: "Rejeitar cadastro", Block: "Bloquear acesso", Unblock: "Desbloquear acesso", Courier: "Entregador", Establishment: "Estabelecimento" };
 
 function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }) {
   const action = useAccountAction();
@@ -64,6 +64,7 @@ function ReviewEditor({ userId, onBack }: { userId: string; onBack: () => void }
   const review = detail?.review;
   const actions = review?.accountStatus === "Blocked" ? ["Unblock"] : [
     ...(review && ["Pending", "NeedsCorrection"].includes(review.reviewStatus) ? ["Start"] : []),
+    ...(review?.reviewStatus === "Rejected" ? ["Reopen"] : []),
     ...(review?.reviewStatus === "InReview" ? ["Approve", "RequestCorrection", "Reject"] : []), "Block",
   ];
   const canStartAnalysis = actions.includes("Start");

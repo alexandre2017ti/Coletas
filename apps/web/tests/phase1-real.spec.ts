@@ -127,12 +127,12 @@ test('cadastro, documentos e aprovação pelo navegador com PostgreSQL real', as
     const rejected = await admin.evaluate(async userId => {
       const modulePath = '/src/api/client.ts';
       const client = await import(modulePath);
-      for (const [expectedVersion, action] of ['Start', 'Reject'].entries()) {
+      for (const [expectedVersion, action] of ['Start', 'Reject', 'Reopen'].entries()) {
         await client.api(`/admin/reviews/${userId}/decisions`, { method: 'POST', body: JSON.stringify({ expectedVersion, action, reason: 'Cadastro fictício reprovado' }) });
       }
       return (await client.api(`/admin/reviews/${userId}`)).review.reviewStatus;
     }, rejectedId);
-    expect(rejected).toBe('Rejected');
+    expect(rejected).toBe('InReview');
     expect(sql(`SELECT "Status" FROM identity."Users" WHERE "Id"='${rejectedId}';`)).toBe('Pending');
   } finally { await context.close().catch(() => {}); }
 });

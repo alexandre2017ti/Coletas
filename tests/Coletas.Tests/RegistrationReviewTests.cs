@@ -246,8 +246,28 @@ public sealed class RegistrationReviewTests
     [InlineData(ReviewStatus.Approved, ReviewAction.Start, false)]
     [InlineData(ReviewStatus.NeedsCorrection, ReviewAction.Start, true)]
     [InlineData(ReviewStatus.Rejected, ReviewAction.Approve, false)]
+    [InlineData(ReviewStatus.Rejected, ReviewAction.Reopen, true)]
+    [InlineData(ReviewStatus.Pending, ReviewAction.Reopen, false)]
     public void TransitionsAreExplicit(ReviewStatus status, ReviewAction action, bool expected)
         => Assert.Equal(expected, RegistrationReview.CanTransition(status, action));
+
+    [Fact]
+    public async Task ReopeningRejectedRegistrationPreservesHistoryAndAllowsApproval()
+    {
+        await using var db = Database();
+        var admin = NewUser(UserRole.Admin, UserStatus.Active); var subject = NewUser(UserRole.Establishment);
+        subject.ReviewStatus = ReviewStatus.Rejected;
+        db.Users.AddRange(admin, subject); await db.SaveChangesAsync();
+        var service = Service(db);
+
+        Assert.True((await service.DecideAsync(admin.Id, subject.Id, new(0, ReviewAction.Reopen, null), default)).IsSuccess);
+        Assert.Equal(ReviewStatus.InReview, subject.ReviewStatus);
+        Assert.Equal(UserStatus.Pending, subject.Status);
+        Assert.Equal("Cadastro reaberto para nova análise.", (await db.ReviewEvents.SingleAsync()).PublicReason);
+        Assert.True((await service.DecideAsync(admin.Id, subject.Id, new(1, ReviewAction.Approve, null), default)).IsSuccess);
+        Assert.Equal(ReviewStatus.Approved, subject.ReviewStatus);
+        Assert.Equal(2, await db.ReviewEvents.CountAsync());
+    }
 
     [Theory]
     [InlineData(UserRole.Courier)]

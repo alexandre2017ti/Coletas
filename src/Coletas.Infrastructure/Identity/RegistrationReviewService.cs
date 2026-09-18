@@ -73,8 +73,8 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
             || request.Reason?.Length > 500
             || request.InternalNote?.Length > 1000)
             return IdentityResult<ReviewItem>.Invalid("Informe decisão e versão; mensagem de até 500 caracteres e nota interna de até 1000.");
-        // A mensagem é opcional em todas as decisões; o texto padrão mantém o histórico compreensível sem incentivar justificativas artificiais.
-        // Mudança: docs/mudancas/2026-09-17-04-inicio-analise-sem-motivo.md
+        // A mensagem é opcional em todas as decisões; inclusive ao reabrir, o histórico deve explicar a reversão sem apagar a rejeição anterior.
+        // Mudança: docs/mudancas/2026-09-18-01-reabrir-analise-rejeitada.md
         var reason = string.IsNullOrWhiteSpace(request.Reason) ? DefaultMessage(request.Action) : request.Reason.Trim();
         var user = await db.Users.SingleOrDefaultAsync(x => x.Id == userId, ct);
         if (user is null) return IdentityResult<ReviewItem>.NotFound("Cadastro não encontrado.");
@@ -124,6 +124,7 @@ public sealed class RegistrationReviewService(ColetasDbContext db, SessionServic
     private static string DefaultMessage(ReviewAction action) => action switch
     {
         ReviewAction.Start => "Cadastro em análise.",
+        ReviewAction.Reopen => "Cadastro reaberto para nova análise.",
         ReviewAction.Approve => "Cadastro aprovado.",
         ReviewAction.RequestCorrection => "Correção solicitada no cadastro.",
         ReviewAction.Reject => "Cadastro não aprovado.",
