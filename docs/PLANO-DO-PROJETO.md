@@ -117,7 +117,8 @@ Esta seção atualiza o estado histórico abaixo, sem apagar evidências anterio
 - [ ] Homologação física iOS — aparelho indisponível.
 - [x] Demonstração atualizada em API 5080/site 5173, readiness 200 e cadastro existente preservado.
 - [x] Tornar opcional a mensagem ao titular em todas as decisões administrativas — cada ação registra uma mensagem padrão quando o campo estiver vazio. [Registro](mudancas/2026-09-17-04-inicio-analise-sem-motivo.md).
-- [x] Permitir reabrir análise de cadastro rejeitado, preservando histórico e exigindo nova aprovação — 154 testes .NET e 10 cenários web desktop/mobile aprovados; aceite PostgreSQL atualizado, mas ainda precisa ser reexecutado. [Registro](mudancas/2026-09-18-01-reabrir-analise-rejeitada.md).
+- [x] Permitir reabrir análise de cadastro rejeitado, preservando histórico e exigindo nova aprovação — 154 testes .NET, 10 cenários web desktop/mobile e aceite PostgreSQL desktop aprovados. [Registro](mudancas/2026-09-18-01-reabrir-analise-rejeitada.md).
+- [x] Reexecutar aceite PostgreSQL da reabertura em WSL/Docker — seletor atualizado para a mensagem opcional; cenário real aprovado em 21/09/2026 no banco isolado. [Registro](mudancas/2026-09-21-01-seletor-aceite-reabertura.md).
 - [x] Testes locais: 150 .NET, 90,28% de linhas; 72 web; aceite PostgreSQL separado aprovado.
 - [~] Envio das mudanças locais e acompanhamento do workflow GitHub.
 - [ ] Confirmar/configurar checks obrigatórios — proteção administrativa inacessível ao conector (403); consulta pública da branch informa protected=false.

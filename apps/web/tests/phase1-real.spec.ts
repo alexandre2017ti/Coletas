@@ -33,7 +33,9 @@ test('cadastro, documentos e aprovação pelo navegador com PostgreSQL real', as
       await expect(admin.getByText('Análise: Em análise')).toBeVisible();
       return;
     }
-    await admin.getByLabel('Motivo público', { exact: true }).fill('Conferência fictícia de homologação');
+    // A mensagem é opcional na interface, mas o aceite a preenche para validar a confirmação e o histórico público.
+    // Mudança: docs/mudancas/2026-09-21-01-seletor-aceite-reabertura.md
+    await admin.getByLabel('Mensagem ao titular (opcional)', { exact: true }).fill('Conferência fictícia de homologação');
     await admin.getByRole('button', { name: label, exact: true }).nth(index).click();
     await expect(admin.getByRole('alertdialog')).toBeVisible();
     await admin.getByRole('alertdialog').getByRole('button', { name: 'Confirmar decisão' }).click();
