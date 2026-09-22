@@ -120,7 +120,7 @@ Esta seção atualiza o estado histórico abaixo, sem apagar evidências anterio
 - [x] Permitir reabrir análise de cadastro rejeitado, preservando histórico e exigindo nova aprovação — 154 testes .NET, 10 cenários web desktop/mobile e aceite PostgreSQL desktop aprovados. [Registro](mudancas/2026-09-18-01-reabrir-analise-rejeitada.md).
 - [x] Reexecutar aceite PostgreSQL da reabertura em WSL/Docker — seletor atualizado para a mensagem opcional; cenário real aprovado em 21/09/2026 no banco isolado. [Registro](mudancas/2026-09-21-01-seletor-aceite-reabertura.md).
 - [x] Testes locais: 150 .NET, 90,28% de linhas; 72 web; aceite PostgreSQL separado aprovado.
-- [~] Envio das mudanças locais e acompanhamento do workflow GitHub.
+- [~] Envio das mudanças locais e acompanhamento do workflow GitHub — três commits enviados em 22/09; workflow nº 8 falhou no job mobile por patch do Expo e o ajuste aguarda o workflow nº 9. [Registro](mudancas/2026-09-22-01-atualizar-patch-expo.md).
 - [ ] Confirmar/configurar checks obrigatórios — proteção administrativa inacessível ao conector (403); consulta pública da branch informa protected=false.
 
 A Fase 1 não está 100% homologada enquanto SMTP externo e aparelhos permanecerem pendentes. A prévia de entregas não conclui a Fase 2.
